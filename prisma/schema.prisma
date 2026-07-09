@@ -1,0 +1,131 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Event {
+  id              Int             @id @default(autoincrement())
+  slug            String          @unique
+  title           String          // e.g. "Bautizo de Mateo Alexander"
+  celebrantName   String          @map("celebrant_name") // e.g. "Mateo Alexander"
+  subtitle        String?         @default("Mi Bautizo") // e.g. "Mi Bautizo"
+  quote           String?         // Quote shown in hero
+  date            DateTime        // Event date & time
+  heroBackgroundUrl    String?    @map("hero_background_url")
+  detailsBackgroundUrl String?    @map("details_background_url")
+  rsvpBackgroundUrl    String?    @map("rsvp_background_url")
+  
+  // Parents & Godparents
+  parents         String?         // Format: "Sofia Mendoza, Alejandro Ruiz"
+  godparents      String?         // Format: "Maria Ruiz, Carlos Mendoza"
+  
+  // Ceremony (Church)
+  churchName      String?         @map("church_name")
+  churchTime      String?         @map("church_time")
+  churchAddress   String?         @map("church_address")
+  churchMapsUrl   String?         @map("church_maps_url")
+  
+  // Reception
+  hallName        String?         @map("hall_name")
+  hallTime        String?         @map("hall_time")
+  hallAddress     String?         @map("hall_address")
+  hallMapsUrl     String?         @map("hall_maps_url")
+  
+  // Dress Code
+  dressCode       String?         @map("dress_code") // e.g. "Formal - Vestimenta clara"
+  
+  // Itinerary items relation
+  itinerary       ItineraryItem[]
+  
+  // Photos relation
+  photos          EventPhoto[]
+  
+  // Gift Registries relation
+  giftRegistries  GiftRegistry[]
+  
+  // Gifts (legacy/custom transfer)
+  giftEnvelope    Boolean         @default(true) @map("gift_envelope")
+  giftBankName    String?         @map("gift_bank_name")
+  giftBankOwner   String?         @map("gift_bank_owner")
+  giftBankAccount String?         @map("gift_bank_account")
+  giftBankClabe   String?         @map("gift_bank_clabe")
+  
+  // RSVP config
+  rsvpPhone       String?         @map("rsvp_phone")
+  rsvpDeadline    DateTime?       @map("rsvp_deadline")
+  
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  rsvps           Rsvp[]
+
+  @@map("events")
+}
+
+model ItineraryItem {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  time      String   // e.g., "12:00 PM"
+  activity  String   // e.g., "Ceremonia Religiosa"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("itinerary_items")
+}
+
+model EventPhoto {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  url       String   // relative path to public uploads (e.g. "/uploads/pic.jpg")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("event_photos")
+}
+
+model GiftRegistry {
+  id             Int      @id @default(autoincrement())
+  eventId        Int      @map("event_id")
+  storeName      String   @map("store_name") // e.g., "Liverpool", "Amazon", "El Palacio de Hierro"
+  registryNumber String?  @map("registry_number") // e.g., "50812345"
+  url            String?  // link to the registry
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("gift_registries")
+}
+
+model Rsvp {
+  id           Int      @id @default(autoincrement())
+  eventId      Int      @map("event_id")
+  slug         String?  @unique
+  familyName   String   @map("family_name")
+  contactPhone String?  @map("contact_phone")
+  comments     String?
+  verificationCode String?  @map("verification_code")
+  createdAt    DateTime @default(now()) @map("created_at")
+  guests       Guest[]
+
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("rsvps")
+}
+
+model Guest {
+  id        Int      @id @default(autoincrement())
+  rsvpId    Int      @map("rsvp_id")
+  name      String
+  isChild   Boolean  @default(false) @map("is_child")
+  confirmed Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rsvp      Rsvp     @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+
+  @@map("guests")
+}

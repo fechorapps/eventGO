@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eventgo_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eventgo}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-eventgo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - lastmile-internal
+
+  eventgo:
+    image: ${EVENTGO_IMAGE}
+    container_name: eventgo
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-eventgo}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - lastmile-internal
+
+networks:
+  lastmile-internal:
+    name: lastmile_lastmile-internal
+    external: true
+
+volumes:
+  pgdata:

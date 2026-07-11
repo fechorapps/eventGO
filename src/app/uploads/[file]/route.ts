@@ -7,6 +7,7 @@ import { join, extname } from 'path';
 // archivos del build los sirve la capa estática con prioridad; el resto de
 // /uploads/* cae aquí y se lee del volumen en el momento.
 
+// Sin SVG: servido inline y same-origin puede ejecutar scripts embebidos (XSS).
 const MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -14,7 +15,6 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
   '.gif': 'image/gif',
   '.avif': 'image/avif',
-  '.svg': 'image/svg+xml',
 };
 
 export async function GET(
@@ -33,6 +33,7 @@ export async function GET(
     return new NextResponse(new Uint8Array(data), {
       headers: {
         'Content-Type': MIME[extname(file).toLowerCase()] ?? 'application/octet-stream',
+        'X-Content-Type-Options': 'nosniff',
         // Los nombres llevan timestamp y sufijo aleatorio: nunca cambian de contenido.
         'Cache-Control': 'public, max-age=31536000, immutable',
       },

@@ -57,7 +57,8 @@ hover sutil, tipografía consistente con el resto del panel.
 
 ### Dependencias
 
-- `react-day-picker` (^9) — incluye locale español (re-export de date-fns).
+- `@daypicker/react` (^10, nombre nuevo de react-day-picker) — incluye locale
+  español (re-export de date-fns).
 
 ## Manejo de errores
 

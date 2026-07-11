@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send } from 'lucide-react';
 import Link from 'next/link';
+import DateField from '@/components/DateField';
 
 interface Guest {
   id: number;
@@ -1370,12 +1371,11 @@ export default function AdminPage() {
 
               <div className="rsvp-form-group">
                 <label className="rsvp-label" htmlFor="form-date">Fecha y Hora del Evento *</label>
-                <input
+                <DateField
                   id="form-date"
-                  type="datetime-local"
-                  className="rsvp-input"
+                  withTime
                   value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
+                  onChange={setFormDate}
                   required
                 />
               </div>
@@ -1679,12 +1679,10 @@ export default function AdminPage() {
                 
                 <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
                   <label className="rsvp-label" htmlFor="form-deadline">Fecha límite para Confirmar Asistencia</label>
-                  <input
+                  <DateField
                     id="form-deadline"
-                    type="date"
-                    className="rsvp-input"
                     value={formRsvpDeadline}
-                    onChange={(e) => setFormRsvpDeadline(e.target.value)}
+                    onChange={setFormRsvpDeadline}
                   />
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
                     Esta fecha se mostrará en el formulario de confirmación público para apresurar a los invitados.

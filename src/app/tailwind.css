@@ -1,0 +1,8 @@
+/* Tailwind vive en su propio archivo: su plugin de PostCSS reordena la salida
+   y rompería el @import de Google Fonts si conviviera con globals.css.
+   Sin preflight: el reset global de Tailwind alteraría el diseño existente. */
+@import "tailwindcss/theme.css" layer(theme);
+/* Utilidades SIN layer(): el reset universal de globals.css (* { margin:0; padding:0 })
+   no usa layers, y el CSS sin layer siempre le gana al layered — las utilidades de
+   espaciado (p-3, mt-2…) quedarían anuladas. */
+@import "tailwindcss/utilities.css";

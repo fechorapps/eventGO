@@ -106,12 +106,12 @@ export default function DateField({
       )}
 
       {open && (
-        <div
-          className="absolute left-0 top-full z-50 mt-2 rounded-[var(--radius-lg)] border border-[rgba(194,164,120,0.35)] bg-[var(--bg-secondary)] p-3 shadow-[var(--shadow-medium)]"
-          style={{ '--rdp-accent-color': 'var(--color-primary)' } as React.CSSProperties}
-        >
+        <div className="absolute left-0 top-full z-50 mt-2 rounded-[var(--radius-lg)] border border-[rgba(194,164,120,0.35)] bg-[var(--bg-secondary)] p-3 shadow-[var(--shadow-medium)]">
           <DayPicker
             mode="single"
+            /* Inline porque la hoja de la librería redefine la variable en .rdp-root
+               y anula cualquier valor heredado del contenedor. */
+            style={{ '--rdp-accent-color': 'var(--color-primary)' } as React.CSSProperties}
             locale={es}
             captionLayout="dropdown"
             selected={selected}

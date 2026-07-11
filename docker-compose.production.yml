@@ -31,6 +31,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # Sin esto, las imágenes subidas viven en la capa del contenedor y se
+      # pierden en cada deploy o reinicio.
+      - uploads:/app/public/uploads
     networks:
       - lastmile-internal
 
@@ -41,3 +45,4 @@ networks:
 
 volumes:
   pgdata:
+  uploads:

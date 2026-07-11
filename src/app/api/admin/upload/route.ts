@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
 export async function POST(request: Request) {
@@ -22,9 +22,11 @@ export async function POST(request: Request) {
     // Create a unique safe filename
     const cleanName = file.name.toLowerCase().replace(/[^a-z0-9.-]/g, '_');
     const uniqueName = `${Date.now()}-${Math.floor(Math.random() * 1000000)}-${cleanName}`;
-    const publicPath = join(process.cwd(), 'public', 'uploads', uniqueName);
+    const uploadsDir = join(process.cwd(), 'public', 'uploads');
+    const publicPath = join(uploadsDir, uniqueName);
 
-    // Write file to the public/uploads/ directory
+    // Write file to the public/uploads/ directory (creating it if the volume is fresh)
+    await mkdir(uploadsDir, { recursive: true });
     await writeFile(publicPath, buffer);
 
     const relativeUrl = `/uploads/${uniqueName}`;

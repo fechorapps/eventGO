@@ -142,12 +142,38 @@ export default function AdminPage() {
     }
   };
 
+  // Las fotos de celular pesan 2-10MB y el proxy rechaza cuerpos grandes;
+  // además la galería no necesita más de 1920px. Se redimensionan y
+  // recomprimen en el navegador antes de subirlas.
+  const compressImage = async (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.size < 900 * 1024) {
+      return file;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      const MAX_DIM = 1920;
+      const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.82)
+      );
+      if (!blob || blob.size >= file.size) return file;
+      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } catch {
+      return file;
+    }
+  };
+
   const uploadFiles = async (files: File[]) => {
     const newUrls: string[] = [];
 
     for (const file of files) {
+      const toSend = await compressImage(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', toSend);
 
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
@@ -155,7 +181,8 @@ export default function AdminPage() {
       });
 
       if (!res.ok) {
-        throw new Error(`Error al subir la imagen: ${file.name}`);
+        const reason = res.status === 413 ? 'la imagen es demasiado grande' : `error ${res.status}`;
+        throw new Error(`Error al subir la imagen ${file.name}: ${reason}`);
       }
 
       const data = await res.json();

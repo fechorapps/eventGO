@@ -1001,7 +1001,7 @@ export default function AdminPage() {
               </div>
 
               <form onSubmit={handleSaveRsvpManual}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
                   <div className="rsvp-form-group">
                     <label className="rsvp-label" htmlFor="manual-family-name">Nombre de la Familia</label>
                     <input
@@ -1313,7 +1313,7 @@ export default function AdminPage() {
 
       {/* VIEW: CREATE OR EDIT EVENT PARAMETERS FORM */}
       {viewMode === 'form' && (
-        <section className="section-card" style={{ padding: '2.5rem 3rem', textAlign: 'left', borderRadius: '16px' }}>
+        <section className="section-card" style={{ padding: '2.5rem clamp(1rem, 5vw, 3rem)', textAlign: 'left', borderRadius: '16px' }}>
           <h2 style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', borderBottom: '1px solid rgba(212,175,55,0.15)', paddingBottom: '0.8rem', marginBottom: '2rem' }}>
             {eventFormId ? 'Configuración de Evento' : 'Registrar Nuevo Evento'}
           </h2>
@@ -1462,7 +1462,7 @@ export default function AdminPage() {
               3. Ubicaciones del Evento
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
               
               {/* Iglesia */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
@@ -1536,7 +1536,7 @@ export default function AdminPage() {
               4. Mesa de Regalos y Plazos
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
               {/* Mesa de Regalos */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
                 <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}>🎁 Detalles de Regalos</h4>
@@ -1605,7 +1605,7 @@ export default function AdminPage() {
 
                   {/* Add registry builder */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(212,175,55,0.02)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.05)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '0.5rem' }}>
                       <select
                         className="guest-builder-select"
                         value={tempStoreName}
@@ -1710,7 +1710,7 @@ export default function AdminPage() {
               </div>
 
               {/* Itinerary Builder */}
-              <div className="rsvp-form-group" style={{ gridColumn: 'span 2' }}>
+              <div className="rsvp-form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="rsvp-label">Itinerario / Cronograma (UX interactiva)</label>
                 
                 {/* List of steps */}
@@ -1775,7 +1775,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Form to add a new hito */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '0.8rem', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '0.8rem', alignItems: 'center' }}>
                   <input
                     type="text"
                     className="rsvp-input"

@@ -997,7 +997,7 @@ export default function AdminPage() {
             <div className="stat-card">
               <div className="stat-value">{totalConfirmed}</div>
               <div className="stat-label">Asistentes Confirmados</div>
-              <UserCheck size={18} style={{ color: '#385723', marginTop: '8px' }} />
+              <UserCheck size={18} style={{ color: '#33567D', marginTop: '8px' }} />
             </div>
             <div className="stat-card">
               <div className="stat-value">{totalAdultsConfirmed}</div>

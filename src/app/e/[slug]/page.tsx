@@ -212,9 +212,35 @@ export default async function EventPage({ params, searchParams }: EventPageProps
           )}
           <div className="section-content-shell">
           <div className="hero-logo" style={{ animation: 'none', marginBottom: '2rem' }}>
-            {/* Elegant Minimalist Cross */}
-            <svg width="36" height="64" viewBox="0 0 36 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 2H20V20H34V24H20V62H16V24H2V20H16V2Z" fill="var(--gold-medium)" />
+            {/* Elegant Minimalist Cross cradled by an olive semicircle wreath */}
+            <svg width="160" height="104" viewBox="0 0 140 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M67.5 2H72.5V17H85V22H72.5V52H67.5V22H55V17H67.5V2Z" fill="var(--gold-medium)" />
+              <g stroke="#8E9B72" strokeWidth="1.4" fill="none" opacity="0.9">
+                <path d="M 64.6 83.7 A 44 44 0 0 1 26.2 35.4" />
+                <path d="M 75.4 83.7 A 44 44 0 0 0 113.8 35.4" />
+              </g>
+              <path d="M0 0 Q 6.2 -3.8 12.5 0 Q 6.2 3.8 0 0 Z" fill="#96A382" transform="translate(60.9 83.0) rotate(226)"/>
+              <path d="M0 0 Q 5.9 -3.6 11.9 0 Q 5.9 3.6 0 0 Z" fill="#A3AE8C" transform="translate(53.5 80.8) rotate(168)"/>
+              <path d="M0 0 Q 5.6 -3.4 11.2 0 Q 5.6 3.4 0 0 Z" fill="#96A382" transform="translate(46.7 77.3) rotate(246)"/>
+              <path d="M0 0 Q 5.3 -3.2 10.6 0 Q 5.3 3.2 0 0 Z" fill="#A3AE8C" transform="translate(40.6 72.7) rotate(188)"/>
+              <path d="M0 0 Q 5.0 -3.0 10.0 0 Q 5.0 3.0 0 0 Z" fill="#96A382" transform="translate(35.3 67.1) rotate(266)"/>
+              <path d="M0 0 Q 4.7 -2.8 9.4 0 Q 4.7 2.8 0 0 Z" fill="#A3AE8C" transform="translate(31.2 60.7) rotate(208)"/>
+              <path d="M0 0 Q 4.4 -2.6 8.8 0 Q 4.4 2.6 0 0 Z" fill="#96A382" transform="translate(28.2 53.6) rotate(286)"/>
+              <path d="M0 0 Q 4.1 -2.4 8.1 0 Q 4.1 2.4 0 0 Z" fill="#A3AE8C" transform="translate(26.4 46.1) rotate(228)"/>
+              <path d="M0 0 Q 3.8 -2.2 7.5 0 Q 3.8 2.2 0 0 Z" fill="#96A382" transform="translate(26.0 38.5) rotate(306)"/>
+              <path d="M0 0 Q 6.2 -3.8 12.5 0 Q 6.2 3.8 0 0 Z" fill="#96A382" transform="translate(79.1 83.0) rotate(22)"/>
+              <path d="M0 0 Q 5.9 -3.6 11.9 0 Q 5.9 3.6 0 0 Z" fill="#A3AE8C" transform="translate(86.5 80.8) rotate(-56)"/>
+              <path d="M0 0 Q 5.6 -3.4 11.2 0 Q 5.6 3.4 0 0 Z" fill="#96A382" transform="translate(93.3 77.3) rotate(2)"/>
+              <path d="M0 0 Q 5.3 -3.2 10.6 0 Q 5.3 3.2 0 0 Z" fill="#A3AE8C" transform="translate(99.4 72.7) rotate(-76)"/>
+              <path d="M0 0 Q 5.0 -3.0 10.0 0 Q 5.0 3.0 0 0 Z" fill="#96A382" transform="translate(104.7 67.1) rotate(-18)"/>
+              <path d="M0 0 Q 4.7 -2.8 9.4 0 Q 4.7 2.8 0 0 Z" fill="#A3AE8C" transform="translate(108.8 60.7) rotate(-96)"/>
+              <path d="M0 0 Q 4.4 -2.6 8.8 0 Q 4.4 2.6 0 0 Z" fill="#96A382" transform="translate(111.8 53.6) rotate(-38)"/>
+              <path d="M0 0 Q 4.1 -2.4 8.1 0 Q 4.1 2.4 0 0 Z" fill="#A3AE8C" transform="translate(113.6 46.1) rotate(-116)"/>
+              <path d="M0 0 Q 3.8 -2.2 7.5 0 Q 3.8 2.2 0 0 Z" fill="#96A382" transform="translate(114.0 38.5) rotate(-58)"/>
+              <circle cx="48.5" cy="77.2" r="2.4" fill="#C2A478"/>
+              <circle cx="30.1" cy="56.1" r="2.4" fill="#C2A478"/>
+              <circle cx="91.5" cy="77.2" r="2.4" fill="#C2A478"/>
+              <circle cx="109.9" cy="56.1" r="2.4" fill="#C2A478"/>
             </svg>
           </div>
           <span className="hero-subtitle">{event.subtitle || 'Nuestra Promesa de Amor'}</span>

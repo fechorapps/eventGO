@@ -172,7 +172,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt="" className="bg-photo-img" />
+                <img src={photo.url} alt="" className="bg-photo-img" loading="lazy" decoding="async" />
               </div>
             );
           })}

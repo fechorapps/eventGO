@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send } from 'lucide-react';
+import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera } from 'lucide-react';
 import Link from 'next/link';
 import DateField from '@/components/DateField';
 
@@ -960,7 +960,7 @@ export default function AdminPage() {
                         className="btn-outline" 
                         style={{ width: '100%', padding: '0.5rem', fontSize: '0.75rem', textTransform: 'none' }}
                       >
-                        🔗 Ver Enlace Público (/e/{event.slug})
+                        <Link2 size={13} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Ver Enlace Público (/e/{event.slug})
                       </a>
                     </div>
                   </div>
@@ -1493,7 +1493,7 @@ export default function AdminPage() {
               
               {/* Iglesia */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}>⛪ Ceremonia / Iglesia</h4>
+                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Church size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Ceremonia / Iglesia</h4>
                 <div className="rsvp-form-group">
                   <label className="rsvp-label" htmlFor="church-name">Nombre del Templo / Iglesia</label>
                   <input id="church-name" type="text" className="rsvp-input" placeholder="Ej: Parroquia de San Francisco" value={formChurchName} onChange={(e) => setFormChurchName(e.target.value)} />
@@ -1526,7 +1526,7 @@ export default function AdminPage() {
 
               {/* Salón */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}>🥂 Recepción / Salón</h4>
+                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Wine size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Recepción / Salón</h4>
                 <div className="rsvp-form-group">
                   <label className="rsvp-label" htmlFor="hall-name">Nombre del Salón o Jardín</label>
                   <input id="hall-name" type="text" className="rsvp-input" placeholder="Ej: Jardín de las Luces" value={formHallName} onChange={(e) => setFormHallName(e.target.value)} />
@@ -1566,7 +1566,7 @@ export default function AdminPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
               {/* Mesa de Regalos */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}>🎁 Detalles de Regalos</h4>
+                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Gift size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Detalles de Regalos</h4>
                 
                 <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <input
@@ -1600,7 +1600,7 @@ export default function AdminPage() {
 
                 {/* Catálogo de Mesas de Regalo en Tiendas (México) */}
                 <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}>🛒 Catálogo de Tiendas (Liverpool, Amazon, etc.)</h5>
+                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}><ShoppingCart size={14} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Catálogo de Tiendas (Liverpool, Amazon, etc.)</h5>
                   
                   {/* Registry items list */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
@@ -1702,7 +1702,7 @@ export default function AdminPage() {
 
               {/* Plazo de Confirmación */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}>⏱️ Límite de Confirmación</h4>
+                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Clock size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Límite de Confirmación</h4>
                 
                 <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
                   <label className="rsvp-label" htmlFor="form-deadline">Fecha límite para Confirmar Asistencia</label>
@@ -1874,7 +1874,7 @@ export default function AdminPage() {
                   className="btn-outline"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '0.8rem 1.5rem' }}
                 >
-                  📸 {photoUploading ? 'Subiendo imágenes...' : 'Subir Fotos del Evento'}
+                  <Camera size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />{photoUploading ? 'Subiendo imágenes...' : 'Subir Fotos del Evento'}
                 </label>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Sube imágenes (.jpg, .png) que se mostrarán flotando y animadas en la galería al hacer scroll.

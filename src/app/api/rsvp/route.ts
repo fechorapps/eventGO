@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { ensureUniqueRsvpSlug } from '@/lib/rsvp-slug';
 
 interface RsvpGuestPayload {
   name: string;
@@ -59,6 +60,12 @@ export async function POST(request: Request) {
       });
 
       if (existingRsvp) {
+        // Familias antiguas pueden no tener slug; sin él la liga /e/...?f= viaja
+        // vacía y no precarga a nadie. Lo generamos al vuelo si falta.
+        const slugToPersist = existingRsvp.slug
+          ? existingRsvp.slug
+          : await ensureUniqueRsvpSlug(prisma.rsvp, familyName.trim());
+
         await prisma.$transaction([
           // 1. Delete existing guests for this RSVP to avoid duplicates
           prisma.guest.deleteMany({
@@ -68,6 +75,7 @@ export async function POST(request: Request) {
           prisma.rsvp.update({
             where: { id: rsvpId },
             data: {
+              slug: slugToPersist,
               familyName: familyName.trim(),
               contactPhone: contactPhone?.trim() || null,
               comments: comments?.trim() || null,
@@ -90,9 +98,11 @@ export async function POST(request: Request) {
 
     // Create a new RSVP entry if no rsvpId is provided
     const randomCode = Math.floor(1000 + Math.random() * 9000).toString(); // Generate random 4-digit verification code
+    const newSlug = await ensureUniqueRsvpSlug(prisma.rsvp, familyName.trim());
     const rsvp = await prisma.rsvp.create({
       data: {
         eventId: targetEventId,
+        slug: newSlug,
         familyName: familyName.trim(),
         contactPhone: contactPhone?.trim() || null,
         comments: comments?.trim() || null,

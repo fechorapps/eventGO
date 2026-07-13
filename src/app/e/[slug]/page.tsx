@@ -134,13 +134,10 @@ export default async function EventPage({ params, searchParams }: EventPageProps
   const hallEmbedUrl = getGoogleMapsEmbedUrl(event.hallMapsUrl, event.hallAddress, event.hallName);
   const locationsAreSame = event.locationsAreSame;
 
-  const heroBackgroundUrl = event.heroBackgroundUrl || event.photos[0]?.url || null;
-  const detailsBackgroundUrl = event.detailsBackgroundUrl || event.photos[1]?.url || event.photos[0]?.url || null;
-  const rsvpBackgroundUrl = event.rsvpBackgroundUrl || event.photos[2]?.url || event.photos[0]?.url || null;
-  const introPrimaryPhoto = event.photos[0]?.url || heroBackgroundUrl;
+  const introPrimaryPhoto = event.photos[0]?.url || event.heroBackgroundUrl || null;
   const introSecondaryPhoto = event.photos[1]?.url || event.photos[0]?.url || null;
   const introTertiaryPhoto = event.photos[2]?.url || event.photos[1]?.url || null;
-  const floatingBackgroundPhotos = event.photos.slice(0, 4);
+  const introHasPhotos = Boolean(introPrimaryPhoto || introSecondaryPhoto || introTertiaryPhoto);
   const parentsList = parseNames(event.parents);
   const godparentsList = parseNames(event.godparents);
 
@@ -159,39 +156,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
       {/* Scroll-reveal and parallax background helper */}
       <ScrollReveal />
 
-      {floatingBackgroundPhotos.length > 0 && (
-        <div className="bg-floating-photos" aria-hidden="true">
-          {floatingBackgroundPhotos.map((photo, idx) => {
-            const positions = [
-              { top: '7rem', left: '4%', rotate: '-5deg' },
-              { top: '30rem', right: '5%', rotate: '4deg' },
-              { top: '58rem', left: '8%', rotate: '-3deg' },
-              { top: '92rem', right: '10%', rotate: '5deg' },
-            ];
-            const pos = positions[idx] || positions[idx % positions.length];
-
-            return (
-              <div
-                key={photo.id}
-                className="bg-floating-photo"
-                style={{
-                  position: 'absolute',
-                  top: pos.top,
-                  left: pos.left,
-                  right: pos.right,
-                  transform: `rotate(${pos.rotate})`,
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt="" className="bg-photo-img" loading="lazy" decoding="async" />
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-
-
       <InvitationNav
         showItinerary={event.itinerary.length > 0}
         showFamily={parentsList.length > 0 || godparentsList.length > 0}
@@ -201,22 +165,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
       <main className="container" style={{ position: 'relative', zIndex: 10 }}>
         
         {/* HERO SECTION */}
-        <section className={`hero ${heroBackgroundUrl ? 'hero-with-background' : ''}`}>
-          {heroBackgroundUrl && (
-            <>
-              <div className="section-background-media">
-                <Image
-                  src={heroBackgroundUrl}
-                  alt={`Fondo del evento ${event.title}`}
-                  fill
-                  priority
-                  sizes="(max-width: 900px) 100vw, 900px"
-                  className="section-background-image"
-                />
-              </div>
-              <div className="section-background-overlay section-background-overlay-hero"></div>
-            </>
-          )}
+        <section className="hero">
           <div className="section-content-shell">
           <div className="hero-logo" style={{ animation: 'none', marginBottom: '2rem' }}>
             {/* Elegant Minimalist Cross cradled by an olive semicircle wreath */}
@@ -280,63 +229,60 @@ export default async function EventPage({ params, searchParams }: EventPageProps
 
         {/* EDITORIAL INTRO */}
         <section className="editorial-intro reveal" id="about">
-          <div className="editorial-intro-grid">
-            <div className="editorial-photo-stack">
-              {introPrimaryPhoto && (
-                <div className="editorial-photo editorial-photo-main" style={{ position: 'absolute' }}>
-                  <Image
-                    src={introPrimaryPhoto}
-                    alt={`Foto principal de ${event.title}`}
-                    fill
-                    sizes="(max-width: 900px) 100vw, 55vw"
-                    className="editorial-photo-image"
-                  />
-                </div>
-              )}
-
-              {introSecondaryPhoto && (
-                <div className="editorial-photo editorial-photo-secondary" style={{ position: 'absolute' }}>
-                  <Image
-                    src={introSecondaryPhoto}
-                    alt={`Foto secundaria de ${event.title}`}
-                    fill
-                    sizes="(max-width: 900px) 60vw, 26vw"
-                    className="editorial-photo-image"
-                  />
-                </div>
-              )}
-
-              {introTertiaryPhoto && (
-                <div className="editorial-photo editorial-photo-tertiary" style={{ position: 'absolute' }}>
-                  <Image
-                    src={introTertiaryPhoto}
-                    alt={`Foto complementaria de ${event.title}`}
-                    fill
-                    sizes="(max-width: 900px) 60vw, 24vw"
-                    className="editorial-photo-image"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="editorial-copy">
-              <span className="section-subtitle">Te invitamos a compartir este día</span>
-              <h2 className="editorial-title">{event.title}</h2>
-              <p className="editorial-lead">
-                {event.quote || `Acompáñanos en la celebración de ${event.celebrantName}, un día preparado con cariño para la familia y las personas más cercanas.`}
-              </p>
-
-              <div className="editorial-meta">
-                <div className="editorial-chip editorial-chip-date">
-                  <Calendar size={16} />
-                  <span>{formattedEventDate}</span>
-                </div>
-                {!hideEventTime && (
-                  <div className="editorial-chip">
-                    <Clock size={16} />
-                    <span>{eventTimeLabel}</span>
+          <div className={`editorial-intro-grid ${introHasPhotos ? '' : 'editorial-intro-grid-single'}`}>
+            {introHasPhotos && (
+              <div className="editorial-photo-stack">
+                {introPrimaryPhoto && (
+                  <div className="editorial-photo editorial-photo-main" style={{ position: 'absolute' }}>
+                    <Image
+                      src={introPrimaryPhoto}
+                      alt={`Foto principal de ${event.title}`}
+                      fill
+                      sizes="(max-width: 900px) 100vw, 55vw"
+                      className="editorial-photo-image"
+                    />
                   </div>
                 )}
+
+                {introSecondaryPhoto && (
+                  <div className="editorial-photo editorial-photo-secondary" style={{ position: 'absolute' }}>
+                    <Image
+                      src={introSecondaryPhoto}
+                      alt={`Foto secundaria de ${event.title}`}
+                      fill
+                      sizes="(max-width: 900px) 60vw, 26vw"
+                      className="editorial-photo-image"
+                    />
+                  </div>
+                )}
+
+                {introTertiaryPhoto && (
+                  <div className="editorial-photo editorial-photo-tertiary" style={{ position: 'absolute' }}>
+                    <Image
+                      src={introTertiaryPhoto}
+                      alt={`Foto complementaria de ${event.title}`}
+                      fill
+                      sizes="(max-width: 900px) 60vw, 24vw"
+                      className="editorial-photo-image"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="editorial-copy">
+              <span className="section-subtitle">Fotos del festejado</span>
+              <h2 className="editorial-title">Un vistazo a su historia</h2>
+              <p className="editorial-lead">
+                {event.quote || `Estas imágenes ponen al festejado al centro de la invitación: un retrato limpio, cercano y sin fondos que distraigan.`}
+              </p>
+              {!introHasPhotos && (
+                <p className="editorial-empty-note">
+                  Aún no hay fotos cargadas. Cuando subas algunas, este bloque se convertirá en un collage editorial.
+                </p>
+              )}
+
+              <div className="editorial-meta">
                 {event.churchName && (
                   <div className="editorial-chip">
                     <Church size={16} />
@@ -354,21 +300,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         </section>
 
         {/* DETAILS SECTION: DATE AND TIME */}
-        <section className={`section-card reveal ${detailsBackgroundUrl ? 'section-card-with-background' : ''}`} id="ceremony">
-          {detailsBackgroundUrl && (
-            <>
-              <div className="section-background-media">
-                <Image
-                  src={detailsBackgroundUrl}
-                  alt={`Fondo de detalles de ${event.title}`}
-                  fill
-                  sizes="(max-width: 900px) 100vw, 900px"
-                  className="section-background-image"
-                />
-              </div>
-              <div className="section-background-overlay"></div>
-            </>
-          )}
+        <section className="section-card reveal" id="ceremony">
           <div className="section-content-shell">
           <span className="section-subtitle">¿Cuándo y Dónde?</span>
           <h2 className="section-title">Detalles del Evento</h2>
@@ -377,17 +309,16 @@ export default async function EventPage({ params, searchParams }: EventPageProps
             <span className="divider-symbol">✦</span>
           </div>
 
-          <div className="event-date-summary">
-            <div className="event-date-row">
-              <Calendar className="location-icon" size={20} />
-              <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{formattedEventDate}</span>
+          <div className="event-schedule-banner">
+            <Calendar className="location-icon" size={20} />
+            <div className="event-schedule-copy">
+              <span className="event-schedule-label">Fecha del evento</span>
+              <span className="event-schedule-value">
+                {formattedEventDate}
+                {!hideEventTime && <span className="event-schedule-separator"> · </span>}
+                {!hideEventTime && <span>{eventTimeLabel}</span>}
+              </span>
             </div>
-            {!hideEventTime && (
-              <div className="event-date-row">
-                <Clock className="location-icon" size={20} />
-                <span style={{ fontWeight: 600 }}>A partir de las {eventTimeLabel}</span>
-              </div>
-            )}
           </div>
 
           <div className={`location-grid ${locationsAreSame ? 'location-grid-single' : ''}`}>
@@ -399,8 +330,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                 </div>
                 <h3 className="location-title">Ceremonia y recepción</h3>
                 <p className="location-name">{event.churchName}</p>
-                {event.churchTime && <p className="location-time">Ceremonia: {event.churchTime}</p>}
-                {event.hallTime && <p className="location-time">Recepción: {event.hallTime}</p>}
                 {event.churchAddress && <p className="location-address">{event.churchAddress}</p>}
                 {event.churchMapsUrl && (
                   <a
@@ -439,7 +368,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                 </div>
                 <h3 className="location-title">Ceremonia</h3>
                 <p className="location-name">{event.churchName}</p>
-                {event.churchTime && <p className="location-time">{event.churchTime}</p>}
                 {event.churchAddress && <p className="location-address">{event.churchAddress}</p>}
                 {event.churchMapsUrl && (
                   <a 
@@ -478,7 +406,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                 </div>
                 <h3 className="location-title">Recepción</h3>
                 <p className="location-name">{event.hallName}</p>
-                {event.hallTime && <p className="location-time">{event.hallTime}</p>}
                 {event.hallAddress && <p className="location-address">{event.hallAddress}</p>}
                 {event.hallMapsUrl && (
                   <a 
@@ -741,21 +668,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         )}
 
         {/* RSVP CONFIRMATION FORM */}
-        <section className={`section-card reveal ${rsvpBackgroundUrl ? 'section-card-with-background' : ''}`} id="rsvp">
-          {rsvpBackgroundUrl && (
-            <>
-              <div className="section-background-media">
-                <Image
-                  src={rsvpBackgroundUrl}
-                  alt={`Fondo de confirmación de ${event.title}`}
-                  fill
-                  sizes="(max-width: 900px) 100vw, 900px"
-                  className="section-background-image"
-                />
-              </div>
-              <div className="section-background-overlay"></div>
-            </>
-          )}
+        <section className="section-card reveal" id="rsvp">
           <div className="section-content-shell">
           <span className="section-subtitle">Confirmación de Asistencia</span>
           <h2 className="section-title">¿Nos Acompañas?</h2>

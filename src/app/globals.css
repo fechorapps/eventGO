@@ -503,12 +503,45 @@ h1, h2, h3, h4 {
   margin-bottom: 1rem;
 }
 
-.event-date-summary {
+.event-schedule-banner {
+  max-width: 620px;
+  margin: 0 auto 2.5rem auto;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: linear-gradient(180deg, rgba(255, 251, 242, 0.98), rgba(255, 247, 232, 0.92));
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 2rem;
-  margin-bottom: 3rem;
+  gap: 0.9rem;
+  box-shadow: 0 10px 30px rgba(136, 112, 61, 0.08);
+}
+
+.event-schedule-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.event-schedule-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.event-schedule-value {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--gold-dark);
+  text-transform: capitalize;
+  line-height: 1.3;
+}
+
+.event-schedule-separator {
+  color: var(--gold-medium);
 }
 
 .event-date-row {
@@ -533,14 +566,6 @@ h1, h2, h3, h4 {
   font-weight: 600;
   font-size: 0.95rem;
   margin-bottom: 0.5rem;
-}
-
-.location-time {
-  font-family: var(--font-serif);
-  font-size: 1.1rem;
-  font-style: italic;
-  color: var(--gold-dark);
-  margin-bottom: 1rem;
 }
 
 .location-address {
@@ -1328,6 +1353,12 @@ html {
   align-items: center;
 }
 
+.editorial-intro-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
 .editorial-photo-stack {
   position: relative;
   min-height: 680px;
@@ -1351,6 +1382,7 @@ html {
   height: 42%;
   right: 0;
   top: 10%;
+  transform: rotate(4deg);
 }
 
 .editorial-photo-tertiary {
@@ -1358,6 +1390,7 @@ html {
   height: 32%;
   right: 9%;
   bottom: 2%;
+  transform: rotate(-5deg);
 }
 
 .editorial-photo-image {
@@ -1383,6 +1416,18 @@ html {
   color: var(--text-dark);
   max-width: 34rem;
   margin-bottom: 1.8rem;
+}
+
+.editorial-empty-note {
+  display: inline-block;
+  max-width: 34rem;
+  margin: -0.5rem 0 1.4rem;
+  padding: 0.7rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(243, 236, 226, 0.72);
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  color: var(--text-muted);
+  font-size: 0.88rem;
 }
 
 .editorial-meta {
@@ -1417,62 +1462,13 @@ html {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* Floating Background Photos */
-.bg-floating-photos {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-.bg-floating-photo {
-  width: 180px;
-  background: #FFF;
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 8px 8px 24px 8px; /* Polaroid feel */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.1s ease-out; /* smooth parallax transition */
-  will-change: transform, opacity;
-  pointer-events: none;
-}
-
-.bg-photo-img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  border-radius: 2px;
-}
-
-/* Adjust styles for mobile views to prevent covering text */
 @media (max-width: 900px) {
-  .bg-floating-photo {
-    width: 110px;
-    opacity: 0.12 !important; /* blend faintly in the background */
-    padding: 5px 5px 15px 5px;
-    left: 8% !important;
-    right: auto !important;
-  }
-  
-  .bg-floating-photo:nth-child(even) {
-    left: auto !important;
-    right: 8% !important;
-  }
-  
-  .bg-photo-img {
-    height: 110px;
-  }
-
-  .hero-with-background {
-    border-radius: 18px;
-  }
-
   .editorial-intro-grid {
     grid-template-columns: 1fr;
+  }
+
+  .editorial-intro-grid-single {
+    max-width: 100%;
   }
 
   .editorial-photo-stack {
@@ -1489,6 +1485,7 @@ html {
     height: 38%;
     top: 8%;
     right: 0;
+    transform: rotate(3deg);
   }
 
   .editorial-photo-tertiary {
@@ -1496,6 +1493,7 @@ html {
     height: 30%;
     right: 7%;
     bottom: 2%;
+    transform: rotate(-4deg);
   }
 
   .editorial-copy {
@@ -1511,6 +1509,11 @@ html {
   .editorial-meta,
   .editorial-actions {
     justify-content: center;
+  }
+
+  .event-schedule-banner {
+    padding: 1rem;
+    align-items: flex-start;
   }
 }
 
@@ -1698,11 +1701,13 @@ html {
   .editorial-photo-secondary {
     width: 40%;
     height: 36%;
+    transform: rotate(2deg);
   }
 
   .editorial-photo-tertiary {
     width: 36%;
     height: 28%;
+    transform: rotate(-3deg);
   }
 
   .editorial-title {

@@ -95,6 +95,12 @@ export default async function EventPage({ params, searchParams }: EventPageProps
     month: 'long',
     year: 'numeric',
   });
+  const eventTimeLabel = event.date.toLocaleTimeString('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const eventHour = event.date.getHours();
+  const hideEventTime = eventHour >= 20;
 
   // Helper to split comma-separated names
   const parseNames = (str: string | null) => {
@@ -321,14 +327,16 @@ export default async function EventPage({ params, searchParams }: EventPageProps
               </p>
 
               <div className="editorial-meta">
-                <div className="editorial-chip">
+                <div className="editorial-chip editorial-chip-date">
                   <Calendar size={16} />
                   <span>{formattedEventDate}</span>
                 </div>
-                <div className="editorial-chip">
-                  <Clock size={16} />
-                  <span>{event.date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
+                {!hideEventTime && (
+                  <div className="editorial-chip">
+                    <Clock size={16} />
+                    <span>{eventTimeLabel}</span>
+                  </div>
+                )}
                 {event.churchName && (
                   <div className="editorial-chip">
                     <Church size={16} />
@@ -369,15 +377,17 @@ export default async function EventPage({ params, searchParams }: EventPageProps
             <span className="divider-symbol">✦</span>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2rem', marginBottom: '3rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="event-date-summary">
+            <div className="event-date-row">
               <Calendar className="location-icon" size={20} />
               <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{formattedEventDate}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Clock className="location-icon" size={20} />
-              <span style={{ fontWeight: 600 }}>A partir de las {event.date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
+            {!hideEventTime && (
+              <div className="event-date-row">
+                <Clock className="location-icon" size={20} />
+                <span style={{ fontWeight: 600 }}>A partir de las {eventTimeLabel}</span>
+              </div>
+            )}
           </div>
 
           <div className={`location-grid ${locationsAreSame ? 'location-grid-single' : ''}`}>

@@ -503,6 +503,26 @@ h1, h2, h3, h4 {
   margin-bottom: 1rem;
 }
 
+.event-date-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.event-date-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.2;
+}
+
+.event-date-row .location-icon {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
 .location-title {
   font-size: 1.6rem;
   color: var(--gold-dark);

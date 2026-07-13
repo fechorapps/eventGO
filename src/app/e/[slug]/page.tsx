@@ -7,6 +7,7 @@ import ScrollReveal from '@/components/ScrollReveal';
 import { MapPin, Calendar, Clock, Gift, Heart, AlertCircle, Church, Wine, Shirt } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { headers } from 'next/headers';
 import { prisma } from '@/lib/db';
 
 interface EventPageProps {
@@ -14,10 +15,29 @@ interface EventPageProps {
   searchParams: Promise<{ f?: string }>;
 }
 
-export async function generateMetadata({ params }: EventPageProps) {
+async function getRequestOrigin() {
+  const headerList = await headers();
+  const host = headerList.get('x-forwarded-host') || headerList.get('host');
+  if (!host) return 'https://gael-negrete-gonzalez.com';
+
+  const proto =
+    headerList.get('x-forwarded-proto') ||
+    (host.includes('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https');
+
+  return `${proto}://${host}`;
+}
+
+export async function generateMetadata({ params, searchParams }: EventPageProps) {
   const { slug } = await params;
+  const searchParamsResolved = await searchParams;
+  const familySlug = searchParamsResolved?.f;
   const event = await prisma.event.findUnique({
     where: { slug },
+    include: {
+      photos: {
+        orderBy: { id: 'asc' },
+      },
+    },
   });
 
   if (!event) {
@@ -27,9 +47,49 @@ export async function generateMetadata({ params }: EventPageProps) {
     };
   }
 
+  const siteOrigin = await getRequestOrigin();
+  const sharePath = familySlug ? `/e/${slug}?f=${encodeURIComponent(familySlug)}` : `/e/${slug}`;
+  const shareUrl = `${siteOrigin}${sharePath}`;
+  const heroImageUrl =
+    event.heroBackgroundUrl ||
+    event.photos[0]?.url ||
+    event.photos[1]?.url ||
+    event.photos[2]?.url ||
+    null;
+  const ogImageUrl =
+    heroImageUrl && heroImageUrl.startsWith('http')
+      ? heroImageUrl
+      : heroImageUrl
+        ? `${siteOrigin}${heroImageUrl.startsWith('/') ? heroImageUrl : `/${heroImageUrl}`}`
+        : `${siteOrigin}/file.svg`;
+
   return {
     title: `${event.title} | ${event.celebrantName}`,
     description: `Estás cordialmente invitado a: ${event.title} de ${event.celebrantName}. Acompáñanos en este día tan especial.`,
+    alternates: {
+      canonical: shareUrl,
+    },
+    openGraph: {
+      title: `${event.title} | ${event.celebrantName}`,
+      description: `Estás cordialmente invitado a: ${event.title} de ${event.celebrantName}.`,
+      url: shareUrl,
+      siteName: 'eventGO',
+      type: 'website',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${event.title} de ${event.celebrantName}`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${event.title} | ${event.celebrantName}`,
+      description: `Estás cordialmente invitado a: ${event.title} de ${event.celebrantName}.`,
+      images: [ogImageUrl],
+    },
   };
 }
 

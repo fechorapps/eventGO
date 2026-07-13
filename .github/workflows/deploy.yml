@@ -71,6 +71,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_DIR: /home/${{ secrets.VPS_USER }}/eventgo
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -83,11 +85,10 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          # The deploy user has no passwordless sudo, so /opt/eventgo must be
-          # created once by hand: sudo install -d -o <user> -g <user> /opt/eventgo
           script: |
-            if [ ! -d /opt/eventgo ] || [ ! -w /opt/eventgo ]; then
-              echo "::error::/opt/eventgo missing or not writable by $(whoami). Create it once with: sudo install -d -o $(whoami) -g $(whoami) /opt/eventgo"
+            mkdir -p "$DEPLOY_DIR"
+            if [ ! -d "$DEPLOY_DIR" ] || [ ! -w "$DEPLOY_DIR" ]; then
+              echo "::error::$DEPLOY_DIR is missing or not writable by $(whoami)."
               exit 1
             fi
 
@@ -99,7 +100,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "docker-compose.production.yml"
-          target: "/opt/eventgo"
+          target: ${{ env.DEPLOY_DIR }}
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -119,7 +120,7 @@ jobs:
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
-            cd /opt/eventgo
+            cd "$DEPLOY_DIR"
             
             # Initialize .env.production if it doesn't exist
             if [ ! -f .env.production ]; then

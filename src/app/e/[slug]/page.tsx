@@ -594,16 +594,14 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                           href={destinationUrl} 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          className="btn-gold"
+                          className="registry-button"
                           style={{ 
                             marginTop: '0.8rem', 
-                            fontSize: '0.75rem', 
-                            padding: '0.4rem 1rem', 
-                            background: '#FFF', 
-                            color: '#000', 
-                            border: '1px solid #eee',
-                            fontFamily: 'var(--font-sans)',
-                            fontWeight: 600
+                            background: colors.bg,
+                            color: colors.text,
+                            border: `1px solid ${colors.border.replace('1px solid ', '')}`,
+                            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.12)',
+                            minWidth: '150px'
                           }}
                         >
                           Ver Mesa de Regalos

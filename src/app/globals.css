@@ -238,6 +238,28 @@ h1, h2, h3, h4 {
   transform: translateY(-1px);
 }
 
+.registry-button {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.7rem 1.25rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.registry-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  opacity: 0.98;
+}
+
 /* Hero Section */
 .hero {
   min-height: 94vh;
@@ -939,6 +961,40 @@ h1, h2, h3, h4 {
   padding-left: 2.8rem;
 }
 
+.rsvp-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem 0;
+}
+
+.rsvp-filter-chip {
+  appearance: none;
+  border: 1px solid rgba(85, 112, 140, 0.18);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rsvp-filter-chip:hover {
+  border-color: var(--gold-medium);
+  color: var(--gold-dark);
+}
+
+.rsvp-filter-chip.active {
+  background: var(--gold-dark);
+  border-color: var(--gold-dark);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(85, 112, 140, 0.15);
+}
+
 .table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -1018,6 +1074,11 @@ h1, h2, h3, h4 {
 .status-pending {
   background-color: #FFF2CC;
   color: #7F6000;
+}
+
+.status-partial {
+  background-color: #E8E2FF;
+  color: #5C47A3;
 }
 
 .badge-child {

@@ -21,6 +21,8 @@ interface RSVP {
   guests: Guest[];
 }
 
+type RSVPFilter = 'all' | 'confirmed' | 'partial' | 'pending';
+
 interface EventItineraryItem {
   id: number;
   time: string;
@@ -109,6 +111,7 @@ export default function AdminPage() {
   const [rsvps, setRsvps] = useState<RSVP[]>([]);
   const [rsvpsLoading, setRsvpsLoading] = useState(false);
   const [rsvpSearchTerm, setRsvpSearchTerm] = useState('');
+  const [rsvpStatusFilter, setRsvpStatusFilter] = useState<RSVPFilter>('all');
 
   // Reusable Mexican Phone Formatter Helper
   const formatMexicanPhone = (value: string) => {
@@ -340,6 +343,21 @@ export default function AdminPage() {
     } finally {
       setRsvpsLoading(false);
     }
+  };
+
+  const getFamilyRsvpStatus = (rsvp: RSVP) => {
+    const confirmedCount = rsvp.guests.filter((guest) => guest.confirmed).length;
+    const totalGuests = rsvp.guests.length;
+
+    if (totalGuests === 0 || confirmedCount === 0) {
+      return { key: 'pending' as const, label: 'Pendiente', className: 'status-pending', summary: '0 confirmados' };
+    }
+
+    if (confirmedCount === totalGuests) {
+      return { key: 'confirmed' as const, label: 'Confirmada', className: 'status-confirmed', summary: `${confirmedCount}/${totalGuests} confirmados` };
+    }
+
+    return { key: 'partial' as const, label: 'Parcial', className: 'status-partial', summary: `${confirmedCount}/${totalGuests} confirmados` };
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -833,7 +851,12 @@ export default function AdminPage() {
     const familyMatch = rsvp.familyName.toLowerCase().includes(searchLower);
     const phoneMatch = (rsvp.contactPhone || '').toLowerCase().includes(searchLower);
     const guestMatch = rsvp.guests.some(g => g.name.toLowerCase().includes(searchLower));
-    return familyMatch || phoneMatch || guestMatch;
+    const matchesSearch = familyMatch || phoneMatch || guestMatch;
+    const familyStatus = getFamilyRsvpStatus(rsvp);
+    const matchesFilter =
+      rsvpStatusFilter === 'all' ? true : familyStatus.key === rsvpStatusFilter;
+
+    return matchesSearch && matchesFilter;
   });
 
   // Login Screen
@@ -1222,6 +1245,37 @@ export default function AdminPage() {
               </div>
             </div>
 
+            <div className="rsvp-filter-bar">
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpStatusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setRsvpStatusFilter('all')}
+              >
+                Todas
+              </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpStatusFilter === 'confirmed' ? 'active' : ''}`}
+                onClick={() => setRsvpStatusFilter('confirmed')}
+              >
+                Confirmadas
+              </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpStatusFilter === 'partial' ? 'active' : ''}`}
+                onClick={() => setRsvpStatusFilter('partial')}
+              >
+                Parciales
+              </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpStatusFilter === 'pending' ? 'active' : ''}`}
+                onClick={() => setRsvpStatusFilter('pending')}
+              >
+                Pendientes
+              </button>
+            </div>
+
             {rsvpsLoading && rsvps.length === 0 ? (
               <p style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>Cargando datos...</p>
             ) : filteredRsvps.length === 0 ? (
@@ -1250,7 +1304,23 @@ export default function AdminPage() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{rsvp.familyName}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.3rem' }}>
+                                {(() => {
+                                  const familyStatus = getFamilyRsvpStatus(rsvp);
+                                  return (
+                                    <span className={`status-badge ${familyStatus.className}`} style={{ fontSize: '0.65rem', padding: '0.18rem 0.5rem' }}>
+                                      {familyStatus.label}
+                                    </span>
+                                  );
+                                })()}
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  {(() => {
+                                    const familyStatus = getFamilyRsvpStatus(rsvp);
+                                    return familyStatus.summary;
+                                  })()}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
                                 📅 {new Date(rsvp.createdAt).toLocaleDateString('es-MX')} {new Date(rsvp.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                               </div>
                             </div>

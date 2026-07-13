@@ -228,76 +228,47 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         </section>
 
         {/* EDITORIAL INTRO */}
-        <section className="editorial-intro reveal" id="about">
-          <div className={`editorial-intro-grid ${introHasPhotos ? '' : 'editorial-intro-grid-single'}`}>
-            {introHasPhotos && (
-              <div className="editorial-photo-stack">
-                {introPrimaryPhoto && (
-                  <div className="editorial-photo editorial-photo-main" style={{ position: 'absolute' }}>
-                    <Image
-                      src={introPrimaryPhoto}
-                      alt={`Foto principal de ${event.title}`}
-                      fill
-                      sizes="(max-width: 900px) 100vw, 55vw"
-                      className="editorial-photo-image"
-                    />
-                  </div>
-                )}
-
-                {introSecondaryPhoto && (
-                  <div className="editorial-photo editorial-photo-secondary" style={{ position: 'absolute' }}>
-                    <Image
-                      src={introSecondaryPhoto}
-                      alt={`Foto secundaria de ${event.title}`}
-                      fill
-                      sizes="(max-width: 900px) 60vw, 26vw"
-                      className="editorial-photo-image"
-                    />
-                  </div>
-                )}
-
-                {introTertiaryPhoto && (
-                  <div className="editorial-photo editorial-photo-tertiary" style={{ position: 'absolute' }}>
-                    <Image
-                      src={introTertiaryPhoto}
-                      alt={`Foto complementaria de ${event.title}`}
-                      fill
-                      sizes="(max-width: 900px) 60vw, 24vw"
-                      className="editorial-photo-image"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="editorial-copy">
-              <span className="section-subtitle">Fotos del festejado</span>
-              <h2 className="editorial-title">Un vistazo a su historia</h2>
-              <p className="editorial-lead">
-                {event.quote || `Estas imágenes ponen al festejado al centro de la invitación: un retrato limpio, cercano y sin fondos que distraigan.`}
-              </p>
-              {!introHasPhotos && (
-                <p className="editorial-empty-note">
-                  Aún no hay fotos cargadas. Cuando subas algunas, este bloque se convertirá en un collage editorial.
-                </p>
+        {introHasPhotos && (
+          <section className="editorial-intro reveal" id="about" aria-label="Fotos del festejado">
+            <div className="editorial-photo-stack editorial-photo-stack-standalone">
+              {introPrimaryPhoto && (
+                <div className="editorial-photo editorial-photo-main" style={{ position: 'absolute' }}>
+                  <Image
+                    src={introPrimaryPhoto}
+                    alt={`Foto principal de ${event.title}`}
+                    fill
+                    sizes="(max-width: 900px) 100vw, 55vw"
+                    className="editorial-photo-image"
+                  />
+                </div>
               )}
 
-              <div className="editorial-meta">
-                {event.churchName && (
-                  <div className="editorial-chip">
-                    <Church size={16} />
-                    <span>{event.churchName}</span>
-                  </div>
-                )}
-              </div>
+              {introSecondaryPhoto && (
+                <div className="editorial-photo editorial-photo-secondary" style={{ position: 'absolute' }}>
+                  <Image
+                    src={introSecondaryPhoto}
+                    alt={`Foto secundaria de ${event.title}`}
+                    fill
+                    sizes="(max-width: 900px) 60vw, 26vw"
+                    className="editorial-photo-image"
+                  />
+                </div>
+              )}
 
-              <div className="editorial-actions">
-                <a href="#ceremony" className="btn-gold">Ver detalles</a>
-                <a href="#rsvp" className="btn-outline">Confirmar asistencia</a>
-              </div>
+              {introTertiaryPhoto && (
+                <div className="editorial-photo editorial-photo-tertiary" style={{ position: 'absolute' }}>
+                  <Image
+                    src={introTertiaryPhoto}
+                    alt={`Foto complementaria de ${event.title}`}
+                    fill
+                    sizes="(max-width: 900px) 60vw, 24vw"
+                    className="editorial-photo-image"
+                  />
+                </div>
+              )}
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* DETAILS SECTION: DATE AND TIME */}
         <section className="section-card reveal" id="ceremony">

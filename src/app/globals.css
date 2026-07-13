@@ -352,12 +352,13 @@ h1, h2, h3, h4 {
 }
 
 .hero-intro {
-  font-size: 1.08rem;
+  font-size: clamp(1.25rem, 2.8vw, 1.85rem);
   font-family: var(--font-serif);
   max-width: 620px;
   color: var(--text-dark);
   margin: 1.5rem auto 2.5rem auto;
-  line-height: 1.7;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .scroll-indicator {
@@ -1407,55 +1408,100 @@ html {
   margin-bottom: 3.75rem;
 }
 
+.photo-carousel {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.photo-carousel-viewport {
+  overflow: hidden;
+  border-radius: 28px;
+}
+
+.photo-carousel-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.photo-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.photo-carousel-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  padding: 0.35rem;
+}
+
+.photo-carousel-frame {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  min-height: 420px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  background: #fff;
+}
+
+.photo-carousel-image {
+  object-fit: cover;
+}
+
+.photo-carousel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.photo-carousel-button {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--gold-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.photo-carousel-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.photo-carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.photo-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(194, 164, 120, 0.35);
+  transition: transform 0.2s ease, background-color 0.2s ease, width 0.2s ease;
+}
+
+.photo-carousel-dot.active {
+  width: 24px;
+  background: var(--gold-dark);
+}
+
 .editorial-intro-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 2rem;
   align-items: center;
-}
-
-.editorial-intro-grid-single {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.editorial-photo-stack {
-  position: relative;
-  min-height: 680px;
-}
-
-.editorial-photo {
-  position: absolute;
-  overflow: hidden;
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid rgba(212, 175, 55, 0.16);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
-}
-
-.editorial-photo-main {
-  inset: 0 18% 0 0;
-}
-
-.editorial-photo-secondary {
-  width: 34%;
-  height: 42%;
-  right: 0;
-  top: 10%;
-  transform: rotate(4deg);
-}
-
-.editorial-photo-tertiary {
-  width: 31%;
-  height: 32%;
-  right: 9%;
-  bottom: 2%;
-  transform: rotate(-5deg);
-}
-
-.editorial-photo-image {
-  object-fit: cover;
 }
 
 .editorial-copy {

@@ -63,6 +63,7 @@ export async function GET(request: Request) {
       id: rsvp.id,
       slug: rsvp.slug || '',
       familyName: rsvp.familyName,
+      invitedBy: rsvp.invitedBy || '',
       contactPhone: rsvp.contactPhone || '',
       comments: rsvp.comments || '',
       createdAt: rsvp.createdAt.toISOString(),

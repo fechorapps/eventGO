@@ -15,6 +15,7 @@ interface RSVP {
   id: number;
   slug: string;
   familyName: string;
+  invitedBy: string;
   contactPhone: string;
   comments: string;
   createdAt: string;
@@ -231,6 +232,7 @@ export default function AdminPage() {
   // RSVP add form states
   const [showAddRsvpForm, setShowAddRsvpForm] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
+  const [newInvitedBy, setNewInvitedBy] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newComments, setNewComments] = useState('');
   const [newGuestsList, setNewGuestsList] = useState<GuestInput[]>([]);
@@ -500,6 +502,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           eventId: selectedEvent.id,
           familyName: newFamilyName.trim(),
+          invitedBy: newInvitedBy.trim(),
           contactPhone: newContactPhone.trim(),
           comments: newComments.trim(),
           guests: newGuestsList,
@@ -510,6 +513,7 @@ export default function AdminPage() {
 
       if (response.ok && data.success) {
         setNewFamilyName('');
+        setNewInvitedBy('');
         setNewContactPhone('');
         setNewComments('');
         setNewGuestsList([]);
@@ -788,6 +792,7 @@ export default function AdminPage() {
 
   const handleOpenRsvpList = (event: Event) => {
     setSelectedEvent(event);
+    setNewInvitedBy('');
     fetchRsvps(event.id);
     setViewMode('rsvp');
   };
@@ -796,11 +801,12 @@ export default function AdminPage() {
   const handleExportCSV = () => {
     if (rsvps.length === 0 || !selectedEvent) return;
 
-    const headers = ['Familia', 'Telefono de Contacto', 'Nombre de Invitado', 'Tipo', 'Asistirá', 'Mensaje/Comentarios', 'Fecha Confirmación'];
+    const headers = ['Familia', 'Invitados por', 'Telefono de Contacto', 'Nombre de Invitado', 'Tipo', 'Asistirá', 'Mensaje/Comentarios', 'Fecha Confirmación'];
     
     const rows = rsvps.flatMap(rsvp => 
       rsvp.guests.map(guest => [
         rsvp.familyName,
+        rsvp.invitedBy === 'papa' ? 'Papá' : rsvp.invitedBy === 'mama' ? 'Mamá' : 'Sin definir',
         rsvp.contactPhone || 'N/A',
         guest.name,
         guest.isChild ? 'Niño' : 'Adulto',
@@ -1105,6 +1111,23 @@ export default function AdminPage() {
                   </div>
 
                   <div className="rsvp-form-group">
+                    <label className="rsvp-label" htmlFor="manual-invited-by">Invitados por</label>
+                    <select
+                      id="manual-invited-by"
+                      className="rsvp-input"
+                      value={newInvitedBy}
+                      onChange={(e) => setNewInvitedBy(e.target.value)}
+                      required
+                    >
+                      <option value="" disabled>
+                        Selecciona una opción
+                      </option>
+                      <option value="papa">Papá</option>
+                      <option value="mama">Mamá</option>
+                    </select>
+                  </div>
+
+                  <div className="rsvp-form-group">
                     <label className="rsvp-label" htmlFor="manual-contact-phone">Teléfono de Contacto</label>
                     <input
                       id="manual-contact-phone"
@@ -1194,6 +1217,7 @@ export default function AdminPage() {
                       setShowAddRsvpForm(false);
                       setNewGuestsList([]);
                       setNewFamilyName('');
+                      setNewInvitedBy('');
                       setNewContactPhone('');
                       setNewComments('');
                     }}
@@ -1231,7 +1255,7 @@ export default function AdminPage() {
               </div>
 
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-                <button onClick={() => setShowAddRsvpForm(true)} className="btn-gold">
+                <button onClick={() => { setShowAddRsvpForm(true); setNewInvitedBy(''); }} className="btn-gold">
                   <Plus size={16} />
                   Agregar Familia
                 </button>
@@ -1304,6 +1328,9 @@ export default function AdminPage() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{rsvp.familyName}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                Invitados por: {rsvp.invitedBy === 'papa' ? 'Papá' : rsvp.invitedBy === 'mama' ? 'Mamá' : 'Sin definir'}
+                              </div>
                               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.3rem' }}>
                                 {(() => {
                                   const familyStatus = getFamilyRsvpStatus(rsvp);

@@ -19,6 +19,7 @@ interface RsvpGuest {
 interface SelectedRsvp {
   id: number;
   familyName: string;
+  invitedBy?: string | null;
   contactPhone?: string | null;
   comments?: string | null;
   guests: RsvpGuest[];
@@ -35,6 +36,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
   const activeRsvp = preloadedRsvp || null;
 
   const [familyName] = useState(preloadedRsvp?.familyName || '');
+  const [invitedBy, setInvitedBy] = useState(preloadedRsvp?.invitedBy || '');
   const [contactPhone, setContactPhone] = useState(preloadedRsvp?.contactPhone || '');
   const [comments, setComments] = useState(preloadedRsvp?.comments || '');
   const [guests, setGuests] = useState<GuestInput[]>(
@@ -96,6 +98,9 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
 
     let text = '¡Hola! Confirmamos nuestra asistencia al Bautizo ✨\n\n';
     text += `*Familia:* ${familyName}\n`;
+    if (invitedBy) {
+      text += `*Invitados por:* ${invitedBy === 'papa' ? 'Papá' : 'Mamá'}\n`;
+    }
 
     if (confirmedList) {
       text += `*Confirmados:* \n${confirmedList}\n`;
@@ -138,6 +143,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
           eventId,
           slug,
           familyName: familyName.trim(),
+          invitedBy: invitedBy.trim(),
           contactPhone: contactPhone.trim(),
           comments: comments.trim(),
           guests,
@@ -231,6 +237,27 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
             disabled
             required
           />
+        </div>
+
+        <div className="rsvp-form-group">
+          <label className="rsvp-label" htmlFor="invited-by">
+            <Users size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+            Invitados por
+          </label>
+          <select
+            id="invited-by"
+            className="rsvp-input"
+            value={invitedBy}
+            onChange={(e) => setInvitedBy(e.target.value)}
+            disabled={loading}
+            required
+          >
+            <option value="" disabled>
+              Selecciona una opción
+            </option>
+            <option value="papa">Papá</option>
+            <option value="mama">Mamá</option>
+          </select>
         </div>
 
         <div className="rsvp-form-group">

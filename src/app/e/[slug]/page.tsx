@@ -2,11 +2,11 @@ import React from 'react';
 import Sparkles from '@/components/Sparkles';
 import Countdown from '@/components/Countdown';
 import InvitationNav from '@/components/InvitationNav';
+import EventPhotoCarousel from '@/components/EventPhotoCarousel';
 import RsvpForm from '@/components/RsvpForm';
 import ScrollReveal from '@/components/ScrollReveal';
 import { MapPin, Calendar, Clock, Gift, Heart, AlertCircle, Church, Wine, Shirt } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/db';
 
@@ -194,10 +194,11 @@ export default async function EventPage({ params, searchParams }: EventPageProps
   const hallEmbedUrl = getGoogleMapsEmbedUrl(event.hallMapsUrl, event.hallAddress, event.hallName);
   const locationsAreSame = event.locationsAreSame;
 
-  const introPrimaryPhoto = event.photos[0]?.url || event.heroBackgroundUrl || null;
-  const introSecondaryPhoto = event.photos[1]?.url || event.photos[0]?.url || null;
-  const introTertiaryPhoto = event.photos[2]?.url || event.photos[1]?.url || null;
-  const introHasPhotos = Boolean(introPrimaryPhoto || introSecondaryPhoto || introTertiaryPhoto);
+  const introPhotos = [
+    ...event.photos.map((photo) => ({ url: photo.url, alt: `${event.title} - foto ${photo.id}` })),
+    ...(event.heroBackgroundUrl ? [{ url: event.heroBackgroundUrl, alt: `${event.title} - imagen principal` }] : []),
+  ];
+  const introHasPhotos = introPhotos.length > 0;
   const parentsList = parseNames(event.parents);
   const godparentsList = parseNames(event.godparents);
 
@@ -290,43 +291,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         {/* EDITORIAL INTRO */}
         {introHasPhotos && (
           <section className="editorial-intro reveal" id="about" aria-label="Fotos del festejado">
-            <div className="editorial-photo-stack editorial-photo-stack-standalone">
-              {introPrimaryPhoto && (
-                <div className="editorial-photo editorial-photo-main" style={{ position: 'absolute' }}>
-                  <Image
-                    src={introPrimaryPhoto}
-                    alt={`Foto principal de ${event.title}`}
-                    fill
-                    sizes="(max-width: 900px) 100vw, 55vw"
-                    className="editorial-photo-image"
-                  />
-                </div>
-              )}
-
-              {introSecondaryPhoto && (
-                <div className="editorial-photo editorial-photo-secondary" style={{ position: 'absolute' }}>
-                  <Image
-                    src={introSecondaryPhoto}
-                    alt={`Foto secundaria de ${event.title}`}
-                    fill
-                    sizes="(max-width: 900px) 60vw, 26vw"
-                    className="editorial-photo-image"
-                  />
-                </div>
-              )}
-
-              {introTertiaryPhoto && (
-                <div className="editorial-photo editorial-photo-tertiary" style={{ position: 'absolute' }}>
-                  <Image
-                    src={introTertiaryPhoto}
-                    alt={`Foto complementaria de ${event.title}`}
-                    fill
-                    sizes="(max-width: 900px) 60vw, 24vw"
-                    className="editorial-photo-image"
-                  />
-                </div>
-              )}
-            </div>
+            <EventPhotoCarousel photos={introPhotos} title={event.title} />
           </section>
         )}
 

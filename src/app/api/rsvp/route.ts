@@ -12,6 +12,7 @@ interface RsvpRequestBody {
   eventId?: number;
   slug?: string;
   familyName?: string;
+  invitedBy?: string;
   contactPhone?: string;
   comments?: string;
   guests?: RsvpGuestPayload[];
@@ -21,7 +22,7 @@ interface RsvpRequestBody {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as RsvpRequestBody;
-    const { eventId, slug, familyName, contactPhone, comments, guests, rsvpId } = body;
+    const { eventId, slug, familyName, invitedBy, contactPhone, comments, guests, rsvpId } = body;
 
     if ((!eventId && !slug) || !familyName || !guests || !Array.isArray(guests) || guests.length === 0) {
       return NextResponse.json(
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
             data: {
               familyName: familyName.trim(),
               slug,
+              invitedBy: invitedBy?.trim() || null,
               contactPhone: contactPhone?.trim() || null,
               comments: comments?.trim() || null,
             },
@@ -98,6 +100,7 @@ export async function POST(request: Request) {
         eventId: targetEventId,
         slug: generateRsvpSlug(familyName.trim()),
         familyName: familyName.trim(),
+        invitedBy: invitedBy?.trim() || null,
         contactPhone: contactPhone?.trim() || null,
         comments: comments?.trim() || null,
         verificationCode: randomCode,

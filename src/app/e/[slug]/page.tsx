@@ -471,7 +471,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         {/* FAMILY SECTION (PARENTS & GODPARENTS) */}
         {(parentsList.length > 0 || godparentsList.length > 0) && (
           <section className="section-card reveal" id="family">
-            <span className="section-subtitle">En Compañía de la Familia</span>
             <h2 className="section-title">Padres y Padrinos</h2>
             
             <div className="section-divider">
@@ -559,7 +558,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
           {/* Store Gift Registries (Mexico) */}
           {event.giftRegistries && event.giftRegistries.length > 0 && (
             <div style={{ marginTop: '2.5rem' }}>
-              <h4 className="bank-info-title" style={{ marginBottom: '1.2rem' }}>Mesas de Regalo en Tiendas</h4>
+              <h4 className="bank-info-title" style={{ marginBottom: '1.2rem' }}>Mesa de Regalo</h4>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1.2rem' }}>
                 {event.giftRegistries.map((reg, idx) => {
                   const getStoreColors = (name: string) => {
@@ -672,7 +671,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
             <Heart size={20} fill="currentColor" style={{ display: 'inline' }} />
           </div>
           <p className="serif-italic" style={{ fontSize: '1.4rem', textTransform: 'none', color: 'var(--gold-dark)', marginBottom: '0.8rem' }}>
-            Te esperamos con mucho amor
+            Te esperamos con mucho amor, {event.celebrantName}
           </p>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {event.title} de {event.celebrantName} • {event.date.getFullYear()}

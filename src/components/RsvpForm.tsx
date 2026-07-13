@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { CheckCircle2, Send, Users, Phone, MessageSquare } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Send, Users, Phone, MessageSquare } from 'lucide-react';
 
 interface GuestInput {
   name: string;
@@ -49,11 +49,11 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
       : []
   );
 
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [whatsappUrl, setWhatsappUrl] = useState('');
   const [animatingIndex, setAnimatingIndex] = useState<number | null>(null);
+  const hasMountedRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
 
   const hostPhoneRaw = rsvpPhone || '521234567890';
   const hostPhoneDigits = hostPhoneRaw.replace(/\D/g, '');
@@ -85,7 +85,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
     }, 450);
   };
 
-  const generateWhatsAppLink = () => {
+  const buildWhatsAppLink = () => {
     const confirmedList = guests
       .filter((guest) => guest.confirmed)
       .map((guest) => `• ${guest.name} (${guest.isChild ? 'Niño' : 'Adulto'})`)
@@ -114,12 +114,33 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
       text += `\n*Dedicatoria:* "${comments.trim()}"`;
     }
 
-    setWhatsappUrl(`https://wa.me/${hostPhone}?text=${encodeURIComponent(text)}`);
+    return `https://wa.me/${hostPhone}?text=${encodeURIComponent(text)}`;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!activeRsvp) return;
 
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      void saveRsvp();
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [activeRsvp, guests, invitedBy, contactPhone, comments]);
+
+  const saveRsvp = async () => {
     if (!familyName.trim()) {
       setError('No se encontró una familia válida en esta liga.');
       return;
@@ -130,7 +151,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     setError('');
 
     try {
@@ -157,45 +178,13 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
         setError(data.error || 'Ocurrió un error al guardar tu confirmación.');
         return;
       }
-
-      generateWhatsAppLink();
-      setSuccess(true);
     } catch (submitError) {
       console.error(submitError);
       setError('Error de conexión. Inténtalo de nuevo.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
-
-  if (success) {
-    return (
-      <div className="rsvp-success-card">
-        <div className="success-icon-wrapper">
-          <CheckCircle2 size={48} className="success-icon" />
-        </div>
-        <h3 className="serif-italic" style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', marginBottom: '0.8rem' }}>
-          ¡Muchas Gracias!
-        </h3>
-        <p style={{ color: 'var(--text-dark)', marginBottom: '1.8rem', fontSize: '0.95rem' }}>
-          Tu confirmación de asistencia ha sido registrada correctamente en el sistema.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-gold"
-            style={{ width: '100%', maxWidth: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
-          >
-            <Send size={18} />
-            Enviar pase por WhatsApp
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   if (!activeRsvp) {
     return (
@@ -220,10 +209,18 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.05)', border: '1px solid var(--gold-medium)', borderRadius: '8px', padding: '0.8rem 1.2rem', marginBottom: '1.5rem' }}>
         <div style={{ fontSize: '0.85rem', color: 'var(--text-dark)' }}>
           ✨ Pase precargado: <strong>{familyName}</strong>
+          <span style={{ marginLeft: '0.75rem', color: 'var(--text-muted)' }}>
+            {saving ? 'Guardando…' : 'Se guarda automáticamente'}
+          </span>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="rsvp-form">
+      <form
+        className="rsvp-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+        }}
+      >
         <div className="rsvp-form-group">
           <label className="rsvp-label" htmlFor="family-name">
             <Users size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
@@ -249,7 +246,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
             className="rsvp-input"
             value={invitedBy}
             onChange={(e) => setInvitedBy(e.target.value)}
-            disabled={loading}
+            disabled={saving}
             required
           >
             <option value="" disabled>
@@ -272,7 +269,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
             placeholder="Ej: (55) 1234-5678"
             value={contactPhone}
             onChange={(e) => setContactPhone(formatMexicanPhone(e.target.value))}
-            disabled={loading}
+            disabled={saving}
           />
         </div>
 
@@ -312,7 +309,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                     type="button"
                     onClick={() => handleSetGuestConfirmed(idx, true)}
                     className={`toggle-btn toggle-yes ${guest.confirmed ? 'active' : ''}`}
-                    disabled={loading}
+                    disabled={saving}
                   >
                     Asistirá
                   </button>
@@ -320,7 +317,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                     type="button"
                     onClick={() => handleSetGuestConfirmed(idx, false)}
                     className={`toggle-btn toggle-no ${!guest.confirmed ? 'active' : ''}`}
-                    disabled={loading}
+                    disabled={saving}
                   >
                     No asistirá
                   </button>
@@ -341,7 +338,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
             placeholder="Puedes dejar un lindo mensaje para el bebé o alguna nota de alimentación/aclaración."
             value={comments}
             onChange={(e) => setComments(e.target.value)}
-            disabled={loading}
+            disabled={saving}
           />
         </div>
 
@@ -351,15 +348,17 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
           </div>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <button
-            type="submit"
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center', marginTop: '2rem' }}>
+          <a
+            href={buildWhatsAppLink()}
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn-gold"
-            disabled={loading}
-            style={{ width: '100%', maxWidth: '300px' }}
+            style={{ width: '100%', maxWidth: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
           >
-            {loading ? 'Guardando...' : 'Confirmar Asistencia'}
-          </button>
+            <Send size={18} />
+            Enviar pase por WhatsApp
+          </a>
         </div>
       </form>
     </div>

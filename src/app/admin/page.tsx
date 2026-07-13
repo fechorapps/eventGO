@@ -232,6 +232,7 @@ export default function AdminPage() {
   
   // RSVP add form states
   const [showAddRsvpForm, setShowAddRsvpForm] = useState(false);
+  const [editingRsvpId, setEditingRsvpId] = useState<number | null>(null);
   const [newFamilyName, setNewFamilyName] = useState('');
   const [newInvitedBy, setNewInvitedBy] = useState('');
   const [newInvitationSent, setNewInvitationSent] = useState(false);
@@ -244,6 +245,20 @@ export default function AdminPage() {
   const [rsvpActionLoadingId, setRsvpActionLoadingId] = useState<number | null>(null);
   const [rsvpAddError, setRsvpAddError] = useState('');
   const [rsvpAddLoading, setRsvpAddLoading] = useState(false);
+
+  const resetRsvpForm = () => {
+    setShowAddRsvpForm(false);
+    setEditingRsvpId(null);
+    setNewFamilyName('');
+    setNewInvitedBy('');
+    setNewInvitationSent(false);
+    setNewContactPhone('');
+    setNewComments('');
+    setNewGuestsList([]);
+    setTempGuestName('');
+    setTempGuestType('adult');
+    setRsvpAddError('');
+  };
 
   // Event Edit / Create form states
   const [eventFormId, setEventFormId] = useState<number | null>(null); // null means creating
@@ -349,6 +364,17 @@ export default function AdminPage() {
     }
   };
 
+  useEffect(() => {
+    if (viewMode !== 'rsvp' || !selectedEvent) return;
+
+    void fetchRsvps(selectedEvent.id);
+    const intervalId = window.setInterval(() => {
+      void fetchRsvps(selectedEvent.id);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [viewMode, selectedEvent?.id]);
+
   const getFamilyRsvpStatus = (rsvp: RSVP) => {
     const confirmedCount = rsvp.guests.filter((guest) => guest.confirmed).length;
     const totalGuests = rsvp.guests.length;
@@ -452,6 +478,26 @@ export default function AdminPage() {
     }
   };
 
+  const handleEditRsvp = (rsvp: RSVP) => {
+    setEditingRsvpId(rsvp.id);
+    setNewFamilyName(rsvp.familyName);
+    setNewInvitedBy(rsvp.invitedBy);
+    setNewInvitationSent(rsvp.invitationSent);
+    setNewContactPhone(rsvp.contactPhone);
+    setNewComments(rsvp.comments);
+    setNewGuestsList(
+      rsvp.guests.map((guest) => ({
+        name: guest.name,
+        isChild: guest.isChild,
+        confirmed: guest.confirmed,
+      }))
+    );
+    setTempGuestName('');
+    setTempGuestType('adult');
+    setRsvpAddError('');
+    setShowAddRsvpForm(true);
+  };
+
   const handleToggleInvitationSent = async (rsvp: RSVP) => {
     try {
       setRsvpActionLoadingId(rsvp.id);
@@ -541,19 +587,14 @@ export default function AdminPage() {
           contactPhone: newContactPhone.trim(),
           comments: newComments.trim(),
           guests: newGuestsList,
+          rsvpId: editingRsvpId || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setNewFamilyName('');
-        setNewInvitedBy('');
-        setNewInvitationSent(false);
-        setNewContactPhone('');
-        setNewComments('');
-        setNewGuestsList([]);
-        setShowAddRsvpForm(false);
+        resetRsvpForm();
         fetchRsvps(selectedEvent.id);
       } else {
         setRsvpAddError(data.error || 'Ocurrió un error al guardar el registro.');
@@ -1121,14 +1162,10 @@ export default function AdminPage() {
           {showAddRsvpForm && (
             <div className="section-card" style={{ padding: '2rem 2.5rem', textAlign: 'left', borderRadius: '12px', marginBottom: '2.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(212,175,55,0.15)', paddingBottom: '0.8rem' }}>
-                <h3 style={{ fontSize: '1.5rem', color: 'var(--gold-dark)', margin: 0 }}>Registrar Nueva Familia / Invitado</h3>
-                <button onClick={() => {
-                  setShowAddRsvpForm(false);
-                  setNewFamilyName('');
-                  setNewContactPhone('');
-                  setNewComments('');
-                  setNewGuestsList([]);
-                }} className="btn-remove-guest" style={{ color: 'var(--text-muted)' }}>
+                <h3 style={{ fontSize: '1.5rem', color: 'var(--gold-dark)', margin: 0 }}>
+                  {editingRsvpId ? 'Editar Familia / Invitado' : 'Registrar Nueva Familia / Invitado'}
+                </h3>
+                <button onClick={resetRsvpForm} className="btn-remove-guest" style={{ color: 'var(--text-muted)' }}>
                   <X size={20} />
                 </button>
               </div>
@@ -1149,6 +1186,18 @@ export default function AdminPage() {
                   </div>
 
                   <div className="rsvp-form-group">
+                    <label className="rsvp-label" htmlFor="manual-contact-phone">Teléfono de Contacto</label>
+                    <input
+                      id="manual-contact-phone"
+                      type="tel"
+                      className="rsvp-input"
+                      placeholder="Ej: (55) 1234-5678"
+                      value={newContactPhone}
+                      onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="rsvp-form-group">
                     <label className="rsvp-label" htmlFor="manual-invited-by">Invitados por</label>
                     <select
                       id="manual-invited-by"
@@ -1163,18 +1212,6 @@ export default function AdminPage() {
                       <option value="papa">Papá</option>
                       <option value="mama">Mamá</option>
                     </select>
-                  </div>
-
-                  <div className="rsvp-form-group">
-                    <label className="rsvp-label" htmlFor="manual-contact-phone">Teléfono de Contacto</label>
-                    <input
-                      id="manual-contact-phone"
-                      type="tel"
-                      className="rsvp-input"
-                      placeholder="Ej: (55) 1234-5678"
-                      value={newContactPhone}
-                      onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
-                    />
                   </div>
 
                   <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1195,19 +1232,45 @@ export default function AdminPage() {
                   <label className="rsvp-label">Integrantes</label>
                   
                   {newGuestsList.map((g, idx) => (
-                    <div key={idx} className="guest-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.5rem' }}>
-                      <div>
-                        <span style={{ fontWeight: 600, marginRight: '10px' }}>{g.name}</span>
-                        <span className="guest-type-tag">{g.isChild ? '👶 Niño' : '👨 Adulto'}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span className={`status-badge ${g.confirmed ? 'status-confirmed' : 'status-pending'}`}>
-                          {g.confirmed ? 'Asistirá' : 'Pendiente'}
-                        </span>
-                        <button type="button" onClick={() => handleRemoveTempGuest(idx)} className="btn-remove-guest">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                    <div key={idx} className="guest-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.5rem', gap: '0.75rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto auto', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="rsvp-input"
+                        value={g.name}
+                        onChange={(e) => {
+                          const updated = [...newGuestsList];
+                          updated[idx] = { ...updated[idx], name: e.target.value };
+                          setNewGuestsList(updated);
+                        }}
+                        placeholder="Nombre del integrante"
+                      />
+                      <select
+                        className="guest-builder-select"
+                        value={g.isChild ? 'child' : 'adult'}
+                        onChange={(e) => {
+                          const updated = [...newGuestsList];
+                          updated[idx] = { ...updated[idx], isChild: e.target.value === 'child' };
+                          setNewGuestsList(updated);
+                        }}
+                      >
+                        <option value="adult">👨 Adulto</option>
+                        <option value="child">👶 Niño</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...newGuestsList];
+                          updated[idx] = { ...updated[idx], confirmed: !updated[idx].confirmed };
+                          setNewGuestsList(updated);
+                        }}
+                        className={`status-badge ${g.confirmed ? 'status-confirmed' : 'status-pending'}`}
+                        style={{ border: 'none', cursor: 'pointer' }}
+                      >
+                        {g.confirmed ? 'Asistirá' : 'Pendiente'}
+                      </button>
+                      <button type="button" onClick={() => handleRemoveTempGuest(idx)} className="btn-remove-guest">
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   ))}
 
@@ -1264,14 +1327,7 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowAddRsvpForm(false);
-                      setNewGuestsList([]);
-                      setNewFamilyName('');
-                      setNewInvitedBy('');
-                      setNewContactPhone('');
-                      setNewComments('');
-                    }}
+                    onClick={resetRsvpForm}
                     className="btn-outline"
                   >
                     Cancelar
@@ -1284,7 +1340,7 @@ export default function AdminPage() {
                     disabled={rsvpAddLoading}
                   >
                     <Save size={16} />
-                    {rsvpAddLoading ? 'Guardando...' : 'Guardar Familia'}
+                    {rsvpAddLoading ? 'Guardando...' : editingRsvpId ? 'Guardar Cambios' : 'Guardar Familia'}
                   </button>
                 </div>
               </form>
@@ -1306,7 +1362,10 @@ export default function AdminPage() {
               </div>
 
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-                <button onClick={() => { setShowAddRsvpForm(true); setNewInvitedBy(''); }} className="btn-gold">
+                <button onClick={() => {
+                  resetRsvpForm();
+                  setShowAddRsvpForm(true);
+                }} className="btn-gold">
                   <Plus size={16} />
                   Agregar Familia
                 </button>
@@ -1489,6 +1548,26 @@ export default function AdminPage() {
                             
                             return (
                               <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditRsvp(rsvp)}
+                                  className="btn-outline"
+                                  style={{
+                                    padding: '0.4rem',
+                                    marginRight: '0.5rem',
+                                    color: 'var(--gold-dark)',
+                                    borderColor: 'rgba(212,175,55,0.3)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    verticalAlign: 'middle',
+                                    minWidth: 'auto',
+                                    height: 'auto'
+                                  }}
+                                  title="Editar familia"
+                                >
+                                  <Edit size={15} />
+                                </button>
                                 <a
                                   href={waLink}
                                   target="_blank"
@@ -1876,14 +1955,14 @@ export default function AdminPage() {
                   </span>
                 </div>
 
-                {/* Catálogo de Mesas de Regalo en Tiendas (México) */}
+                {/* Catálogo de Mesa de Regalo (México) */}
                 <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}><ShoppingCart size={14} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Catálogo de Tiendas (Liverpool, Sears, Amazon, etc.)</h5>
+                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}><ShoppingCart size={14} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Catálogo de Mesa de Regalo (Liverpool, Sears, Amazon, etc.)</h5>
                   
                   {/* Registry items list */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
                     {giftRegistries.length === 0 ? (
-                      <p style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No has agregado mesas de regalos en tiendas.</p>
+                      <p style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No has agregado una mesa de regalo.</p>
                     ) : (
                       giftRegistries.map((reg, idx) => (
                         <div key={idx} className="guest-item-card" style={{ padding: '0.5rem 0.8rem', marginBottom: 0 }}>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { generateRsvpSlug } from '@/lib/rsvp-slug';
 
 interface RsvpGuestPayload {
   name: string;
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       });
 
       if (existingRsvp) {
+        const slug = existingRsvp.slug || generateRsvpSlug(familyName.trim());
         await prisma.$transaction([
           // 1. Delete existing guests for this RSVP to avoid duplicates
           prisma.guest.deleteMany({
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
             where: { id: rsvpId },
             data: {
               familyName: familyName.trim(),
+              slug,
               contactPhone: contactPhone?.trim() || null,
               comments: comments?.trim() || null,
             },
@@ -93,6 +96,7 @@ export async function POST(request: Request) {
     const rsvp = await prisma.rsvp.create({
       data: {
         eventId: targetEventId,
+        slug: generateRsvpSlug(familyName.trim()),
         familyName: familyName.trim(),
         contactPhone: contactPhone?.trim() || null,
         comments: comments?.trim() || null,

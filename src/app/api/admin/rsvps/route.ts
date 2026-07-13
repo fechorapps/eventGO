@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin } from '@/lib/auth';
+import { generateRsvpSlug } from '@/lib/rsvp-slug';
 
 export async function GET(request: Request) {
   try {
@@ -31,6 +32,31 @@ export async function GET(request: Request) {
         createdAt: 'desc',
       },
     });
+
+    const missingSlugRsvps = rsvpsData.filter((rsvp) => !rsvp.slug);
+    if (missingSlugRsvps.length > 0) {
+      await prisma.$transaction(
+        missingSlugRsvps.map((rsvp) =>
+          prisma.rsvp.update({
+            where: { id: rsvp.id },
+            data: { slug: generateRsvpSlug(rsvp.familyName) },
+          })
+        )
+      );
+      rsvpsData.splice(0, rsvpsData.length, ...(await prisma.rsvp.findMany({
+        where,
+        include: {
+          guests: {
+            orderBy: {
+              id: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })));
+    }
 
     // Map database properties to front-end camelCase structure
     const rsvps = rsvpsData.map((rsvp) => ({

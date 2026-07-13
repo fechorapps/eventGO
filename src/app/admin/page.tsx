@@ -179,10 +179,23 @@ export default function AdminPage() {
         canvas.toBlob(resolve, 'image/jpeg', 0.82)
       );
       if (!blob || blob.size >= file.size) return file;
-      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      return new File([blob], getSafeUploadFileName(file.name, '.jpg'), { type: 'image/jpeg' });
     } catch {
       return file;
     }
+  };
+
+  const getSafeUploadFileName = (name: string, fallbackExt = '.jpg') => {
+    const lowerName = name.toLowerCase().replace(/\\/g, '/').split('/').pop() || 'upload';
+    const lastDot = lowerName.lastIndexOf('.');
+    const stemRaw = lastDot > 0 ? lowerName.slice(0, lastDot) : lowerName;
+    const extRaw = lastDot > 0 ? lowerName.slice(lastDot) : '';
+    const stem = stemRaw
+      .replace(/[^a-z0-9_-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'upload';
+    const safeExt = /^\.[a-z0-9]+$/.test(extRaw) ? extRaw : fallbackExt;
+    return `${stem}${safeExt}`;
   };
 
   const uploadFiles = async (files: File[]) => {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
 import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { extname, join, resolve, sep } from 'path';
 
 export async function POST(request: Request) {
   try {
@@ -20,10 +20,22 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(bytes);
 
     // Create a unique safe filename
-    const cleanName = file.name.toLowerCase().replace(/[^a-z0-9.-]/g, '_');
-    const uniqueName = `${Date.now()}-${Math.floor(Math.random() * 1000000)}-${cleanName}`;
+    const originalName = file.name.toLowerCase().replace(/\\/g, '/').split('/').pop() || 'upload';
+    const ext = extname(originalName).toLowerCase();
+    const stem = (ext ? originalName.slice(0, -ext.length) : originalName)
+      .replace(/[^a-z0-9_-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'upload';
+    const safeExt = /^\.[a-z0-9]+$/.test(ext) ? ext : '';
+    const uniqueName = `${Date.now()}-${Math.floor(Math.random() * 1000000)}-${stem}${safeExt}`;
     const uploadsDir = join(process.cwd(), 'public', 'uploads');
     const publicPath = join(uploadsDir, uniqueName);
+    const resolvedUploadsDir = resolve(uploadsDir) + sep;
+    const resolvedPublicPath = resolve(publicPath);
+
+    if (!resolvedPublicPath.startsWith(resolvedUploadsDir)) {
+      return NextResponse.json({ error: 'Nombre inválido' }, { status: 400 });
+    }
 
     // Write file to the public/uploads/ directory (creating it if the volume is fresh)
     await mkdir(uploadsDir, { recursive: true });

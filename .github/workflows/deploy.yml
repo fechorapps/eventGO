@@ -128,13 +128,14 @@ jobs:
 
             LEGACY_ENV_FILE="/opt/eventgo/.env.production"
 
-            # If this is a fresh deploy directory, reuse the old production env
-            # so we keep the existing database password and app secrets.
-            if [ ! -f .env.production ] && [ -f "$LEGACY_ENV_FILE" ]; then
+            # Prefer the old production env when it exists so we preserve the
+            # live database password and app secrets from the previous deploy.
+            if [ -f "$LEGACY_ENV_FILE" ]; then
               cp "$LEGACY_ENV_FILE" .env.production
             fi
 
-            # Initialize .env.production only when there is no legacy file to reuse.
+            # Initialize .env.production only when there is no legacy file and
+            # no existing production env to reuse.
             if [ ! -f .env.production ]; then
               echo "Creating fresh .env.production file. Please configure the environment variables!"
               echo "EVENTGO_IMAGE=${IMAGE}" > .env.production

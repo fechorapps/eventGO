@@ -16,6 +16,7 @@ interface RSVP {
   slug: string;
   familyName: string;
   invitedBy: string;
+  invitationSent: boolean;
   contactPhone: string;
   comments: string;
   createdAt: string;
@@ -233,6 +234,7 @@ export default function AdminPage() {
   const [showAddRsvpForm, setShowAddRsvpForm] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
   const [newInvitedBy, setNewInvitedBy] = useState('');
+  const [newInvitationSent, setNewInvitationSent] = useState(false);
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newComments, setNewComments] = useState('');
   const [newGuestsList, setNewGuestsList] = useState<GuestInput[]>([]);
@@ -450,6 +452,38 @@ export default function AdminPage() {
     }
   };
 
+  const handleToggleInvitationSent = async (rsvp: RSVP) => {
+    try {
+      setRsvpActionLoadingId(rsvp.id);
+      const response = await fetch('/api/admin/rsvps', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: rsvp.id,
+          invitationSent: !rsvp.invitationSent,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No fue posible actualizar la invitación.');
+      }
+
+      setRsvps((current) =>
+        current.map((item) =>
+          item.id === rsvp.id ? { ...item, invitationSent: data.rsvp?.invitationSent ?? !rsvp.invitationSent } : item
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo actualizar el estado de la invitación.');
+    } finally {
+      setRsvpActionLoadingId(null);
+    }
+  };
+
   // RSVP Form Builder Handlers
   const handleAddTempGuest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -503,6 +537,7 @@ export default function AdminPage() {
           eventId: selectedEvent.id,
           familyName: newFamilyName.trim(),
           invitedBy: newInvitedBy.trim(),
+          invitationSent: newInvitationSent,
           contactPhone: newContactPhone.trim(),
           comments: newComments.trim(),
           guests: newGuestsList,
@@ -514,6 +549,7 @@ export default function AdminPage() {
       if (response.ok && data.success) {
         setNewFamilyName('');
         setNewInvitedBy('');
+        setNewInvitationSent(false);
         setNewContactPhone('');
         setNewComments('');
         setNewGuestsList([]);
@@ -793,6 +829,7 @@ export default function AdminPage() {
   const handleOpenRsvpList = (event: Event) => {
     setSelectedEvent(event);
     setNewInvitedBy('');
+    setNewInvitationSent(false);
     fetchRsvps(event.id);
     setViewMode('rsvp');
   };
@@ -801,12 +838,13 @@ export default function AdminPage() {
   const handleExportCSV = () => {
     if (rsvps.length === 0 || !selectedEvent) return;
 
-    const headers = ['Familia', 'Invitados por', 'Telefono de Contacto', 'Nombre de Invitado', 'Tipo', 'Asistirá', 'Mensaje/Comentarios', 'Fecha Confirmación'];
+    const headers = ['Familia', 'Invitados por', 'Invitación enviada', 'Telefono de Contacto', 'Nombre de Invitado', 'Tipo', 'Asistirá', 'Mensaje/Comentarios', 'Fecha Confirmación'];
     
     const rows = rsvps.flatMap(rsvp => 
       rsvp.guests.map(guest => [
         rsvp.familyName,
         rsvp.invitedBy === 'papa' ? 'Papá' : rsvp.invitedBy === 'mama' ? 'Mamá' : 'Sin definir',
+        rsvp.invitationSent ? 'Sí' : 'No',
         rsvp.contactPhone || 'N/A',
         guest.name,
         guest.isChild ? 'Niño' : 'Adulto',
@@ -1138,6 +1176,19 @@ export default function AdminPage() {
                       onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
                     />
                   </div>
+
+                  <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      id="manual-invitation-sent"
+                      type="checkbox"
+                      checked={newInvitationSent}
+                      onChange={(e) => setNewInvitationSent(e.target.checked)}
+                      style={{ width: '18px', height: '18px' }}
+                    />
+                    <label className="rsvp-label" htmlFor="manual-invitation-sent" style={{ marginBottom: 0, cursor: 'pointer' }}>
+                      Ya se envió la invitación
+                    </label>
+                  </div>
                 </div>
 
                 <div className="rsvp-form-group" style={{ marginTop: '1rem' }}>
@@ -1313,6 +1364,7 @@ export default function AdminPage() {
                     <tr>
                       <th style={{ width: '22%' }}>Familia / Invitado</th>
                       <th style={{ width: '15%' }}>Teléfono</th>
+                      <th style={{ width: '11%' }}>Invitación</th>
                       <th style={{ width: '33%' }}>Integrantes de la Familia</th>
                       <th style={{ width: '20%' }}>Mensaje / Comentarios</th>
                       <th style={{ width: '10%', textAlign: 'center' }}>Acciones</th>
@@ -1382,6 +1434,11 @@ export default function AdminPage() {
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>No registrado</span>
                           )}
                         </td>
+                        <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                          <span className={`status-badge ${rsvp.invitationSent ? 'status-confirmed' : 'status-pending'}`} style={{ fontSize: '0.7rem', padding: '0.22rem 0.55rem' }}>
+                            {rsvp.invitationSent ? 'Enviada' : 'Pendiente'}
+                          </span>
+                        </td>
                         <td style={{ verticalAlign: 'middle' }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {rsvp.guests.map((guest) => (
@@ -1431,27 +1488,49 @@ export default function AdminPage() {
                               : `https://wa.me/?text=${encodeURIComponent(text)}`;
                             
                             return (
-                              <a
-                                href={waLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn-outline"
-                                style={{ 
-                                  padding: '0.4rem', 
-                                  marginRight: '0.5rem', 
-                                  color: '#25D366', 
-                                  borderColor: 'rgba(37, 211, 102, 0.3)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  verticalAlign: 'middle',
-                                  minWidth: 'auto',
-                                  height: 'auto'
-                                }}
-                                title="Enviar por WhatsApp"
-                              >
-                                <Send size={15} />
-                              </a>
+                              <>
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-outline"
+                                  style={{
+                                    padding: '0.4rem',
+                                    marginRight: '0.5rem',
+                                    color: '#25D366',
+                                    borderColor: 'rgba(37, 211, 102, 0.3)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    verticalAlign: 'middle',
+                                    minWidth: 'auto',
+                                    height: 'auto'
+                                  }}
+                                  title="Enviar por WhatsApp"
+                                >
+                                  <Send size={15} />
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleInvitationSent(rsvp)}
+                                  disabled={rsvpActionLoadingId === rsvp.id}
+                                  className="btn-outline"
+                                  style={{
+                                    padding: '0.4rem',
+                                    color: rsvp.invitationSent ? 'var(--gold-dark)' : 'var(--text-muted)',
+                                    borderColor: rsvp.invitationSent ? 'rgba(212,175,55,0.3)' : 'rgba(148,163,184,0.3)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    verticalAlign: 'middle',
+                                    minWidth: 'auto',
+                                    height: 'auto'
+                                  }}
+                                  title={rsvp.invitationSent ? 'Marcar como no enviada' : 'Marcar como enviada'}
+                                >
+                                  {rsvp.invitationSent ? '✓' : '○'}
+                                </button>
+                              </>
                             );
                           })()}
                           <button

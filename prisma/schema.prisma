@@ -108,6 +108,7 @@ model Rsvp {
   slug         String?  @unique
   familyName   String   @map("family_name")
   invitedBy    String?  @map("invited_by")
+  invitationSent Boolean @default(false) @map("invitation_sent")
   contactPhone String?  @map("contact_phone")
   comments     String?
   verificationCode String?  @map("verification_code")

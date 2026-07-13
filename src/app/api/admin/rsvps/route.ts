@@ -64,6 +64,7 @@ export async function GET(request: Request) {
       slug: rsvp.slug || '',
       familyName: rsvp.familyName,
       invitedBy: rsvp.invitedBy || '',
+      invitationSent: rsvp.invitationSent,
       contactPhone: rsvp.contactPhone || '',
       comments: rsvp.comments || '',
       createdAt: rsvp.createdAt.toISOString(),
@@ -106,5 +107,38 @@ export async function DELETE(request: Request) {
   } catch (error: any) {
     console.error('Error deleting RSVP with Prisma:', error);
     return NextResponse.json({ error: 'Error al eliminar la confirmación' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const isAdmin = await verifyAdmin();
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const id = Number(body?.id);
+    const invitationSent = body?.invitationSent;
+
+    if (!Number.isInteger(id) || id <= 0 || typeof invitationSent !== 'boolean') {
+      return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
+    }
+
+    const rsvp = await prisma.rsvp.update({
+      where: { id },
+      data: { invitationSent },
+    });
+
+    return NextResponse.json({
+      success: true,
+      rsvp: {
+        id: rsvp.id,
+        invitationSent: rsvp.invitationSent,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error updating RSVP invitation status:', error);
+    return NextResponse.json({ error: 'Error al actualizar la invitación' }, { status: 500 });
   }
 }

@@ -54,7 +54,8 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
   const [animatingIndex, setAnimatingIndex] = useState<number | null>(null);
 
   const hostPhoneRaw = rsvpPhone || '521234567890';
-  const hostPhone = hostPhoneRaw.replace(/\D/g, '');
+  const hostPhoneDigits = hostPhoneRaw.replace(/\D/g, '');
+  const hostPhone = hostPhoneDigits.length === 10 ? `52${hostPhoneDigits}` : hostPhoneDigits;
 
   const formatMexicanPhone = (value: string) => {
     const numbers = value.replace(/\D/g, '');

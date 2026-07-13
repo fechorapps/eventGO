@@ -1,6 +1,7 @@
 import React from 'react';
 import Sparkles from '@/components/Sparkles';
 import Countdown from '@/components/Countdown';
+import InvitationNav from '@/components/InvitationNav';
 import RsvpForm from '@/components/RsvpForm';
 import ScrollReveal from '@/components/ScrollReveal';
 import { MapPin, Calendar, Clock, Gift, Heart, AlertCircle, Church, Wine, Shirt } from 'lucide-react';
@@ -101,6 +102,9 @@ export default async function EventPage({ params, searchParams }: EventPageProps
     return str.split(',').map((name) => name.trim()).filter(Boolean);
   };
 
+  const formatClabe = (value: string) =>
+    (value.replace(/\D/g, '').match(/.{1,3}/g) || []).join(' ');
+
   // Google Maps embed URL generator helper
   const getGoogleMapsEmbedUrl = (mapsUrl: string | null, address: string | null, name: string | null): string => {
     if (mapsUrl && (mapsUrl.includes('google.com/maps/embed') || mapsUrl.includes('output=embed'))) {
@@ -122,6 +126,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
 
   const churchEmbedUrl = getGoogleMapsEmbedUrl(event.churchMapsUrl, event.churchAddress, event.churchName);
   const hallEmbedUrl = getGoogleMapsEmbedUrl(event.hallMapsUrl, event.hallAddress, event.hallName);
+  const locationsAreSame = event.locationsAreSame;
 
   const heroBackgroundUrl = event.heroBackgroundUrl || event.photos[0]?.url || null;
   const detailsBackgroundUrl = event.detailsBackgroundUrl || event.photos[1]?.url || event.photos[0]?.url || null;
@@ -181,15 +186,11 @@ export default async function EventPage({ params, searchParams }: EventPageProps
 
 
 
-      {/* Floating Pill Navigation Menu (withnovu.com inspired design) */}
-      <nav className="invitation-nav">
-        <a href="#ceremony">Ubicación</a>
-        {event.itinerary && event.itinerary.length > 0 && <a href="#itinerary">Itinerario</a>}
-        {(parentsList.length > 0 || godparentsList.length > 0) && <a href="#family">Familia</a>}
-        {event.photos.length > 0 && <a href="#photos">Fotos</a>}
-        <a href="#gifts">Regalos</a>
-        <a href="#rsvp" className="nav-btn-rsvp">Confirmar</a>
-      </nav>
+      <InvitationNav
+        showItinerary={event.itinerary.length > 0}
+        showFamily={parentsList.length > 0 || godparentsList.length > 0}
+        showPhotos={event.photos.length > 0}
+      />
 
       <main className="container" style={{ position: 'relative', zIndex: 10 }}>
         
@@ -379,9 +380,49 @@ export default async function EventPage({ params, searchParams }: EventPageProps
             </div>
           </div>
 
-          <div className="location-grid">
+          <div className={`location-grid ${locationsAreSame ? 'location-grid-single' : ''}`}>
+            {/* Shared venue (only if ceremony and reception take place together) */}
+            {locationsAreSame && event.churchName && (
+              <div className="location-card location-card-featured">
+                <div className="location-icon">
+                  <Church size={40} strokeWidth={1.5} />
+                </div>
+                <h3 className="location-title">Ceremonia y recepción</h3>
+                <p className="location-name">{event.churchName}</p>
+                {event.churchTime && <p className="location-time">Ceremonia: {event.churchTime}</p>}
+                {event.hallTime && <p className="location-time">Recepción: {event.hallTime}</p>}
+                {event.churchAddress && <p className="location-address">{event.churchAddress}</p>}
+                {event.churchMapsUrl && (
+                  <a
+                    href={event.churchMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-gold"
+                    style={{ marginBottom: churchEmbedUrl ? '1rem' : 0 }}
+                  >
+                    <MapPin size={16} />
+                    Ver en Google Maps
+                  </a>
+                )}
+
+                {churchEmbedUrl && (
+                  <div className="embed-map-wrapper">
+                    <iframe
+                      src={churchEmbedUrl}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen={false}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    ></iframe>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Church (Only if configured) */}
-            {event.churchName && (
+            {!locationsAreSame && event.churchName && (
               <div className="location-card">
                 <div className="location-icon">
                   <Church size={40} strokeWidth={1.5} />
@@ -420,7 +461,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
             )}
 
             {/* Reception (Only if configured) */}
-            {event.hallName && (
+            {!locationsAreSame && event.hallName && (
               <div className="location-card">
                 <div className="location-icon">
                   <Wine size={40} strokeWidth={1.5} />
@@ -560,33 +601,13 @@ export default async function EventPage({ params, searchParams }: EventPageProps
           </div>
 
           {/* Bank Info Box (Only if configured) */}
-          {(event.giftBankName || event.giftBankAccount || event.giftBankClabe) && (
+          {event.giftBankClabe && (
             <div className="bank-info-box">
               <h4 className="bank-info-title">Datos Bancarios para Transferencias</h4>
-              {event.giftBankName && (
-                <div className="bank-row">
-                  <span className="bank-label">Banco:</span>
-                  <span className="bank-value">{event.giftBankName}</span>
-                </div>
-              )}
-              {event.giftBankOwner && (
-                <div className="bank-row">
-                  <span className="bank-label">Titular:</span>
-                  <span className="bank-value">{event.giftBankOwner}</span>
-                </div>
-              )}
-              {event.giftBankAccount && (
-                <div className="bank-row">
-                  <span className="bank-label">Número de Cuenta:</span>
-                  <span className="bank-value">{event.giftBankAccount}</span>
-                </div>
-              )}
-              {event.giftBankClabe && (
-                <div className="bank-row">
-                  <span className="bank-label">CLABE Interbancaria:</span>
-                  <span className="bank-value">{event.giftBankClabe}</span>
-                </div>
-              )}
+              <div className="bank-row">
+                <span className="bank-label">CLABE Interbancaria:</span>
+                <span className="bank-value">{formatClabe(event.giftBankClabe)}</span>
+              </div>
             </div>
           )}
 
@@ -600,6 +621,8 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                     switch (name) {
                       case 'Liverpool':
                         return { bg: '#e01e5a', text: '#FFF', border: '1px solid #c9114b' };
+                      case 'Sears':
+                        return { bg: '#0055a4', text: '#FFF', border: '1px solid #003d75' };
                       case 'Amazon México':
                         return { bg: '#232f3e', text: '#ff9900', border: '1px solid #ff9900' };
                       case 'El Palacio de Hierro':

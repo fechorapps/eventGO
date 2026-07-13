@@ -258,6 +258,13 @@ h1, h2, h3, h4 {
   margin-bottom: 3.5rem;
 }
 
+/* Si todavía no hay foto de portada, el hero no debe reservar una pantalla
+   completa vacía: ese espacio se percibía como un bloque blanco. */
+.hero:not(.hero-with-background) {
+  min-height: auto;
+  padding-bottom: 4rem;
+}
+
 .section-card-with-background {
   position: relative;
   overflow: hidden;
@@ -332,8 +339,8 @@ h1, h2, h3, h4 {
 }
 
 .scroll-indicator {
-  position: absolute;
-  bottom: 1.8rem;
+  position: static;
+  margin-top: 2rem;
   color: var(--gold-medium);
   font-size: 0.8rem;
   letter-spacing: 0.15em;
@@ -450,6 +457,11 @@ h1, h2, h3, h4 {
   gap: 1.5rem;
 }
 
+.location-grid-single {
+  grid-template-columns: minmax(0, 780px);
+  justify-content: center;
+}
+
 @media (max-width: 768px) {
   .location-grid {
     grid-template-columns: 1fr;
@@ -472,6 +484,18 @@ h1, h2, h3, h4 {
 .location-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-medium);
+}
+
+.location-card-featured {
+  padding: 2.75rem;
+}
+
+.location-card-featured .location-title {
+  font-size: 1.9rem;
+}
+
+.location-card-featured .location-name {
+  font-size: 1.2rem;
 }
 
 .location-icon {
@@ -1491,6 +1515,11 @@ html {
 }
 
 .invitation-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.6rem;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 500;
@@ -1503,6 +1532,14 @@ html {
 
 .invitation-nav a:hover {
   color: var(--color-primary);
+}
+
+.invitation-nav a[aria-current='page'] {
+  color: var(--color-primary-dark);
+  font-weight: 700;
+  background: rgba(194, 164, 120, 0.16);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(194, 164, 120, 0.32);
 }
 
 .invitation-nav .nav-btn-rsvp {
@@ -1519,6 +1556,12 @@ html {
   background: var(--color-primary-dark);
   transform: none;
   box-shadow: 0 4px 10px rgba(85, 112, 140, 0.15);
+}
+
+.invitation-nav .nav-btn-rsvp[aria-current='page'] {
+  background: var(--color-primary-dark);
+  color: #FFF !important;
+  box-shadow: 0 4px 12px rgba(85, 112, 140, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
 /* Scroll adjustments to ensure smooth scroll animations */
@@ -1688,14 +1731,5 @@ select:focus-visible,
   .reveal-item {
     opacity: 1 !important;
     transform: none !important;
-  }
-}
-
-/* En móvil el indicador "Desliza para ver detalles" (absoluto al fondo del
-   hero) se encimaba con el countdown: pasa al flujo normal del contenido. */
-@media (max-width: 600px) {
-  .scroll-indicator {
-    position: static;
-    margin-top: 2rem;
   }
 }

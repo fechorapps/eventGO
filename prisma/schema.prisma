@@ -33,6 +33,7 @@ model Event {
   hallTime        String?         @map("hall_time")
   hallAddress     String?         @map("hall_address")
   hallMapsUrl     String?         @map("hall_maps_url")
+  locationsAreSame Boolean        @default(false) @map("locations_are_same")
   
   // Dress Code
   dressCode       String?         @map("dress_code") // e.g. "Formal - Vestimenta clara"

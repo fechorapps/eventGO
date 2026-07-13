@@ -60,6 +60,7 @@ interface Event {
   hallTime: string | null;
   hallAddress: string | null;
   hallMapsUrl: string | null;
+  locationsAreSame: boolean;
   dressCode: string | null;
   itinerary: EventItineraryItem[];
   photos: EventPhoto[];
@@ -122,6 +123,20 @@ export default function AdminPage() {
     }
   };
 
+  const formatWhatsAppPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 13);
+    const hasMexicoCountryCode = digits.startsWith('52') && digits.length > 10;
+    const countryCode = hasMexicoCountryCode ? digits.slice(0, digits.startsWith('521') ? 3 : 2) : '';
+    const localNumber = hasMexicoCountryCode ? digits.slice(countryCode.length) : digits;
+    const formattedLocalNumber = formatMexicanPhone(localNumber);
+
+    if (!countryCode) return formattedLocalNumber;
+    return `+${countryCode} ${formattedLocalNumber}`.trim();
+  };
+
+  const formatClabe = (value: string) =>
+    (value.replace(/\D/g, '').slice(0, 18).match(/.{1,3}/g) || []).join(' ');
+
   // URL Auto-Prefix & Validation Helpers
   const ensureHttp = (url: string): string => {
     if (!url) return '';
@@ -134,6 +149,9 @@ export default function AdminPage() {
 
   const isValidUrl = (url: string): boolean => {
     if (!url) return true;
+    // Las fotos cargadas por este administrador se sirven desde /public/uploads.
+    // Son rutas internas válidas, aunque no sean URL absolutas.
+    if (/^\/uploads\/[a-zA-Z0-9._-]+$/.test(url.trim())) return true;
     try {
       const parsed = new URL(url);
       return parsed.protocol === 'http:' || parsed.protocol === 'https:';
@@ -230,8 +248,10 @@ export default function AdminPage() {
   const [formHallTime, setFormHallTime] = useState('');
   const [formHallAddress, setFormHallAddress] = useState('');
   const [formHallMapsUrl, setFormHallMapsUrl] = useState('');
+  const [formLocationsAreSame, setFormLocationsAreSame] = useState(true);
 
   const [formDressCode, setFormDressCode] = useState('');
+  const [formDressCodeEnabled, setFormDressCodeEnabled] = useState(false);
   
   // Interactive Itinerary list state
   const [itineraryItems, setItineraryItems] = useState<TempItineraryInput[]>([]);
@@ -250,12 +270,9 @@ export default function AdminPage() {
   const [tempRegistryUrl, setTempRegistryUrl] = useState('');
   
   const [formGiftEnvelope, setFormGiftEnvelope] = useState(true);
-  const [formGiftBankName, setFormGiftBankName] = useState('');
-  const [formGiftBankOwner, setFormGiftBankOwner] = useState('');
-  const [formGiftBankAccount, setFormGiftBankAccount] = useState('');
   const [formGiftBankClabe, setFormGiftBankClabe] = useState('');
   
-  const [formRsvpPhone, setFormRsvpPhone] = useState('5215512345678');
+  const [formRsvpPhone, setFormRsvpPhone] = useState(formatWhatsAppPhone('5215512345678'));
   const [formRsvpDeadline, setFormRsvpDeadline] = useState('');
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
@@ -507,8 +524,10 @@ export default function AdminPage() {
     setFormHallTime('2:00 PM');
     setFormHallAddress('Camino Real a Toluca 45, Col. Lomas de Vista Hermosa, CDMX');
     setFormHallMapsUrl('https://maps.google.com/?q=Salon+de+Eventos+El+Jardin+de+las+Luces+CDMX');
+    setFormLocationsAreSame(true);
     
-    setFormDressCode('Formal (De preferencia colores claros o beige)');
+    setFormDressCode('');
+    setFormDressCodeEnabled(false);
     
     // Default interactive itinerary
     setItineraryItems([
@@ -534,12 +553,9 @@ export default function AdminPage() {
     setTempRegistryUrl('');
     
     setFormGiftEnvelope(true);
-    setFormGiftBankName('BBVA');
-    setFormGiftBankOwner('Sofía Mendoza Pérez');
-    setFormGiftBankAccount('0123 4567 8901 2345');
-    setFormGiftBankClabe('0121 8000 1234 5678 90');
+    setFormGiftBankClabe(formatClabe('012180001234567890'));
     
-    setFormRsvpPhone('5215512345678');
+    setFormRsvpPhone(formatWhatsAppPhone('5215512345678'));
     
     // Set RSVP deadline 2 weeks before the event
     const deadlineDate = new Date(futureDate);
@@ -579,8 +595,10 @@ export default function AdminPage() {
     setFormHallTime(event.hallTime || '');
     setFormHallAddress(event.hallAddress || '');
     setFormHallMapsUrl(event.hallMapsUrl || '');
+    setFormLocationsAreSame(event.locationsAreSame);
 
     setFormDressCode(event.dressCode || '');
+    setFormDressCodeEnabled(Boolean(event.dressCode));
     
     // Load itinerary items from relation
     setItineraryItems(
@@ -611,12 +629,9 @@ export default function AdminPage() {
     setTempRegistryUrl('');
     
     setFormGiftEnvelope(event.giftEnvelope);
-    setFormGiftBankName(event.giftBankName || '');
-    setFormGiftBankOwner(event.giftBankOwner || '');
-    setFormGiftBankAccount(event.giftBankAccount || '');
-    setFormGiftBankClabe(event.giftBankClabe || '');
+    setFormGiftBankClabe(formatClabe(event.giftBankClabe || ''));
     
-    setFormRsvpPhone(event.rsvpPhone || '');
+    setFormRsvpPhone(formatWhatsAppPhone(event.rsvpPhone || ''));
     
     if (event.rsvpDeadline) {
       setFormRsvpDeadline(new Date(event.rsvpDeadline).toISOString().slice(0, 10));
@@ -647,7 +662,7 @@ export default function AdminPage() {
       setFormError('Por favor verifica el enlace de la ubicación de la Iglesia (debe ser una URL válida, ej: https://...).');
       return;
     }
-    if (formHallMapsUrl && !isValidUrl(formHallMapsUrl)) {
+    if (!formLocationsAreSame && formHallMapsUrl && !isValidUrl(formHallMapsUrl)) {
       setFormError('Por favor verifica el enlace de la ubicación de la Recepción (debe ser una URL válida, ej: https://...).');
       return;
     }
@@ -661,6 +676,11 @@ export default function AdminPage() {
     }
     if (formRsvpBackgroundUrl && !isValidUrl(formRsvpBackgroundUrl)) {
       setFormError('Por favor verifica la foto de fondo para RSVP.');
+      return;
+    }
+    const giftBankClabe = formGiftBankClabe.replace(/\D/g, '');
+    if (giftBankClabe && giftBankClabe.length !== 18) {
+      setFormError('La CLABE interbancaria debe tener 18 dígitos.');
       return;
     }
 
@@ -684,20 +704,18 @@ export default function AdminPage() {
       churchTime: formChurchTime.trim() || null,
       churchAddress: formChurchAddress.trim() || null,
       churchMapsUrl: formChurchMapsUrl.trim() || null,
-      hallName: formHallName.trim() || null,
+      hallName: (formLocationsAreSame ? formChurchName : formHallName).trim() || null,
       hallTime: formHallTime.trim() || null,
-      hallAddress: formHallAddress.trim() || null,
-      hallMapsUrl: formHallMapsUrl.trim() || null,
-      dressCode: formDressCode.trim() || null,
+      hallAddress: (formLocationsAreSame ? formChurchAddress : formHallAddress).trim() || null,
+      hallMapsUrl: (formLocationsAreSame ? formChurchMapsUrl : formHallMapsUrl).trim() || null,
+      locationsAreSame: formLocationsAreSame,
+      dressCode: formDressCodeEnabled ? formDressCode.trim() || null : null,
       itinerary: itineraryItems,     // Structured array
       photos: uploadedPhotos,          // Structured array of urls
       giftRegistries: giftRegistries,  // Structured array of stores
       giftEnvelope: formGiftEnvelope,
-      giftBankName: formGiftBankName.trim() || null,
-      giftBankOwner: formGiftBankOwner.trim() || null,
-      giftBankAccount: formGiftBankAccount.trim() || null,
-      giftBankClabe: formGiftBankClabe.trim() || null,
-      rsvpPhone: formRsvpPhone.trim() || null,
+      giftBankClabe: giftBankClabe || null,
+      rsvpPhone: formRsvpPhone.replace(/\D/g, '') || null,
       rsvpDeadline: formRsvpDeadline ? new Date(formRsvpDeadline).toISOString() : null,
     };
 
@@ -1424,10 +1442,11 @@ export default function AdminPage() {
                 <input
                   id="form-rsvp-phone"
                   type="tel"
+                  inputMode="tel"
                   className="rsvp-input"
-                  placeholder="Ej: 5215512345678 (con código de país)"
+                  placeholder="Ej: +52 1 (55) 1234-5678"
                   value={formRsvpPhone}
-                  onChange={(e) => setFormRsvpPhone(e.target.value)}
+                  onChange={(e) => setFormRsvpPhone(formatWhatsAppPhone(e.target.value))}
                 />
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
                   Número de WhatsApp al cual los invitados enviarán su comprobante automático.
@@ -1489,19 +1508,56 @@ export default function AdminPage() {
               3. Ubicaciones del Evento
             </h3>
 
+            <fieldset style={{ border: 0, padding: 0, margin: '0 0 1.25rem' }}>
+              <legend className="rsvp-label" style={{ marginBottom: '0.65rem' }}>¿Dónde serán la ceremonia y la recepción?</legend>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                  <input
+                    type="radio"
+                    name="event-locations"
+                    checked={formLocationsAreSame}
+                    onChange={() => setFormLocationsAreSame(true)}
+                    style={{ accentColor: '#D4AF37', cursor: 'pointer' }}
+                  />
+                  En el mismo lugar
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                  <input
+                    type="radio"
+                    name="event-locations"
+                    checked={!formLocationsAreSame}
+                    onChange={() => setFormLocationsAreSame(false)}
+                    style={{ accentColor: '#D4AF37', cursor: 'pointer' }}
+                  />
+                  En lugares diferentes
+                </label>
+              </div>
+            </fieldset>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
               
               {/* Iglesia */}
               <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Church size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Ceremonia / Iglesia</h4>
+                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Church size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />{formLocationsAreSame ? 'Ceremonia y recepción' : 'Ceremonia / Iglesia'}</h4>
+                {formLocationsAreSame && (
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '-0.5rem 0 1rem' }}>
+                    Esta ubicación se mostrará una sola vez en la invitación.
+                  </p>
+                )}
                 <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="church-name">Nombre del Templo / Iglesia</label>
-                  <input id="church-name" type="text" className="rsvp-input" placeholder="Ej: Parroquia de San Francisco" value={formChurchName} onChange={(e) => setFormChurchName(e.target.value)} />
+                  <label className="rsvp-label" htmlFor="church-name">{formLocationsAreSame ? 'Nombre del lugar' : 'Nombre del Templo / Iglesia'}</label>
+                  <input id="church-name" type="text" className="rsvp-input" placeholder={formLocationsAreSame ? 'Ej: Salón Jardín de las Luces' : 'Ej: Parroquia de San Francisco'} value={formChurchName} onChange={(e) => setFormChurchName(e.target.value)} />
                 </div>
                 <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="church-time">Hora específica</label>
+                  <label className="rsvp-label" htmlFor="church-time">{formLocationsAreSame ? 'Hora de la ceremonia' : 'Hora específica'}</label>
                   <input id="church-time" type="text" className="rsvp-input" placeholder="Ej: 12:00 PM" value={formChurchTime} onChange={(e) => setFormChurchTime(e.target.value)} />
                 </div>
+                {formLocationsAreSame && (
+                  <div className="rsvp-form-group">
+                    <label className="rsvp-label" htmlFor="shared-hall-time">Hora de la recepción (opcional)</label>
+                    <input id="shared-hall-time" type="text" className="rsvp-input" placeholder="Ej: 2:00 PM" value={formHallTime} onChange={(e) => setFormHallTime(e.target.value)} />
+                  </div>
+                )}
                 <div className="rsvp-form-group">
                   <label className="rsvp-label" htmlFor="church-address">Dirección completa</label>
                   <input id="church-address" type="text" className="rsvp-input" placeholder="Calle, Número, Colonia, CP" value={formChurchAddress} onChange={(e) => setFormChurchAddress(e.target.value)} />
@@ -1525,7 +1581,7 @@ export default function AdminPage() {
               </div>
 
               {/* Salón */}
-              <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
+              {!formLocationsAreSame && <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
                 <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Wine size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Recepción / Salón</h4>
                 <div className="rsvp-form-group">
                   <label className="rsvp-label" htmlFor="hall-name">Nombre del Salón o Jardín</label>
@@ -1555,7 +1611,7 @@ export default function AdminPage() {
                     <span style={{ fontSize: '0.65rem', color: '#ff4d4d', display: 'block', marginTop: '4px' }}>Formato de enlace incorrecto (debe incluir http:// o https://)</span>
                   )}
                 </div>
-              </div>
+              </div>}
             </div>
 
             {/* --- SECCIÓN 4: REGALOS Y CONFIRMACIÓN --- */}
@@ -1581,26 +1637,27 @@ export default function AdminPage() {
                   </label>
                 </div>
 
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="bank-name">Nombre del Banco</label>
-                  <input id="bank-name" type="text" className="rsvp-input" placeholder="Ej: BBVA" value={formGiftBankName} onChange={(e) => setFormGiftBankName(e.target.value)} />
-                </div>
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="bank-owner">Titular de la Cuenta</label>
-                  <input id="bank-owner" type="text" className="rsvp-input" placeholder="Ej: Sofía Mendoza" value={formGiftBankOwner} onChange={(e) => setFormGiftBankOwner(e.target.value)} />
-                </div>
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="bank-account">Número de Cuenta</label>
-                  <input id="bank-account" type="text" className="rsvp-input" placeholder="Ej: 0123 4567 89..." value={formGiftBankAccount} onChange={(e) => setFormGiftBankAccount(e.target.value)} />
-                </div>
                 <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
                   <label className="rsvp-label" htmlFor="bank-clabe">CLABE Interbancaria</label>
-                  <input id="bank-clabe" type="text" className="rsvp-input" placeholder="18 dígitos..." value={formGiftBankClabe} onChange={(e) => setFormGiftBankClabe(e.target.value)} />
+                  <input
+                    id="bank-clabe"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={23}
+                    className="rsvp-input"
+                    placeholder="000 000 000 000 000 000"
+                    value={formGiftBankClabe}
+                    onChange={(e) => setFormGiftBankClabe(formatClabe(e.target.value))}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                    Captura los 18 dígitos de tu CLABE.
+                  </span>
                 </div>
 
                 {/* Catálogo de Mesas de Regalo en Tiendas (México) */}
                 <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}><ShoppingCart size={14} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Catálogo de Tiendas (Liverpool, Amazon, etc.)</h5>
+                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}><ShoppingCart size={14} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Catálogo de Tiendas (Liverpool, Sears, Amazon, etc.)</h5>
                   
                   {/* Registry items list */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
@@ -1610,7 +1667,7 @@ export default function AdminPage() {
                       giftRegistries.map((reg, idx) => (
                         <div key={idx} className="guest-item-card" style={{ padding: '0.5rem 0.8rem', marginBottom: 0 }}>
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexGrow: 1 }}>
-                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: reg.storeName === 'Liverpool' ? '#e01e5a' : reg.storeName === 'Amazon México' ? '#232f3e' : reg.storeName === 'El Palacio de Hierro' ? '#000000' : 'var(--gold-dark)', color: '#FFF', borderRadius: '4px', fontWeight: 'bold' }}>
+                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: reg.storeName === 'Liverpool' ? '#e01e5a' : reg.storeName === 'Sears' ? '#0055a4' : reg.storeName === 'Amazon México' ? '#232f3e' : reg.storeName === 'El Palacio de Hierro' ? '#000000' : 'var(--gold-dark)', color: '#FFF', borderRadius: '4px', fontWeight: 'bold' }}>
                               {reg.storeName}
                             </span>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-dark)' }}>
@@ -1640,6 +1697,7 @@ export default function AdminPage() {
                         style={{ padding: '0.6rem', fontSize: '0.8rem', minHeight: 'auto' }}
                       >
                         <option value="Liverpool">Liverpool</option>
+                        <option value="Sears">Sears</option>
                         <option value="Amazon México">Amazon México</option>
                         <option value="El Palacio de Hierro">El Palacio de Hierro</option>
                         <option value="Mercado Libre">Mercado Libre</option>
@@ -1725,15 +1783,28 @@ export default function AdminPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
               <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-dresscode">Código de Vestimenta</label>
-                <input
-                  id="form-dresscode"
-                  type="text"
-                  className="rsvp-input"
-                  placeholder="Ej: Formal (No blanco para invitados) o Semiformal"
-                  value={formDressCode}
-                  onChange={(e) => setFormDressCode(e.target.value)}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: formDressCodeEnabled ? '0.7rem' : 0 }}>
+                  <input
+                    id="dress-code-enabled"
+                    type="checkbox"
+                    checked={formDressCodeEnabled}
+                    onChange={(e) => setFormDressCodeEnabled(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: '#D4AF37', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="dress-code-enabled" className="rsvp-label" style={{ marginBottom: 0, cursor: 'pointer' }}>
+                    Mostrar código de vestimenta
+                  </label>
+                </div>
+                {formDressCodeEnabled && (
+                  <input
+                    id="form-dresscode"
+                    type="text"
+                    className="rsvp-input"
+                    placeholder="Ej: Formal (No blanco para invitados) o Semiformal"
+                    value={formDressCode}
+                    onChange={(e) => setFormDressCode(e.target.value)}
+                  />
+                )}
               </div>
 
               {/* Itinerary Builder */}
@@ -1890,6 +1961,30 @@ export default function AdminPage() {
                     <div key={idx} style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(212,175,55,0.2)', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        onClick={() => setUploadedPhotos((photos) => photos.filter((_, photoIndex) => photoIndex !== idx))}
+                        aria-label={`Eliminar foto ${idx + 1}`}
+                        title="Eliminar foto"
+                        style={{
+                          position: 'absolute',
+                          top: '6px',
+                          right: '6px',
+                          width: '28px',
+                          height: '28px',
+                          border: 0,
+                          borderRadius: '50%',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: '#fff',
+                          background: 'rgba(178, 34, 34, 0.92)',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.24)',
+                        }}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </button>
                     </div>
                   ))}
                 </div>

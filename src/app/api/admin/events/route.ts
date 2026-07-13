@@ -106,6 +106,7 @@ export async function POST(request: Request) {
       hallTime,
       hallAddress,
       hallMapsUrl,
+      locationsAreSame,
       dressCode,
       itinerary,       // Expecting array of { time: string, activity: string }
       photos,          // Expecting array of strings (urls)
@@ -150,6 +151,7 @@ export async function POST(request: Request) {
         hallTime: hallTime?.trim() || null,
         hallAddress: hallAddress?.trim() || null,
         hallMapsUrl: hallMapsUrl?.trim() || null,
+        locationsAreSame: locationsAreSame === true,
         dressCode: dressCode?.trim() || null,
         giftEnvelope: giftEnvelope !== false,
         giftBankName: giftBankName?.trim() || null,
@@ -218,6 +220,7 @@ export async function PUT(request: Request) {
       hallTime,
       hallAddress,
       hallMapsUrl,
+      locationsAreSame,
       dressCode,
       itinerary,       // Expecting array of { time: string, activity: string }
       photos,          // Expecting array of strings (urls)
@@ -285,6 +288,7 @@ export async function PUT(request: Request) {
         hallTime: hallTime?.trim() || null,
         hallAddress: hallAddress?.trim() || null,
         hallMapsUrl: hallMapsUrl?.trim() || null,
+        locationsAreSame: locationsAreSame === true,
         dressCode: dressCode?.trim() || null,
         giftEnvelope: giftEnvelope !== false,
         giftBankName: giftBankName?.trim() || null,

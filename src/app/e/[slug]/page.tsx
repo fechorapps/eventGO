@@ -159,7 +159,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
       <InvitationNav
         showItinerary={event.itinerary.length > 0}
         showFamily={parentsList.length > 0 || godparentsList.length > 0}
-        showPhotos={event.photos.length > 0}
+        showPhotos={false}
       />
 
       <main className="container" style={{ position: 'relative', zIndex: 10 }}>
@@ -616,27 +616,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
             </div>
           )}
         </section>
-
-        {/* PHOTO GALLERY */}
-        {event.photos.length > 0 && (
-          <section className="section-card reveal" id="photos">
-            <span className="section-subtitle">Recuerdos del evento</span>
-            <h2 className="section-title">Galería de Fotos</h2>
-
-            <div className="section-divider">
-              <span className="divider-symbol">✦</span>
-            </div>
-
-            <div className="gallery-grid">
-              {event.photos.map((photo, idx) => (
-                <div key={photo.id} className={`gallery-item reveal-item delay-${(idx % 5) + 1}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt={`Foto ${idx + 1} de ${event.title}`} className="gallery-img" />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* RSVP CONFIRMATION FORM */}
         <section className="section-card reveal" id="rsvp">

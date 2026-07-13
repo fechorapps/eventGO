@@ -604,6 +604,18 @@ export default async function EventPage({ params, searchParams }: EventPageProps
           {event.giftBankClabe && (
             <div className="bank-info-box">
               <h4 className="bank-info-title">Datos Bancarios para Transferencias</h4>
+              {event.giftBankName && (
+                <div className="bank-row">
+                  <span className="bank-label">Banco:</span>
+                  <span className="bank-value">{event.giftBankName}</span>
+                </div>
+              )}
+              {event.giftBankOwner && (
+                <div className="bank-row">
+                  <span className="bank-label">Titular:</span>
+                  <span className="bank-value">{event.giftBankOwner}</span>
+                </div>
+              )}
               <div className="bank-row">
                 <span className="bank-label">CLABE Interbancaria:</span>
                 <span className="bank-value">{formatClabe(event.giftBankClabe)}</span>

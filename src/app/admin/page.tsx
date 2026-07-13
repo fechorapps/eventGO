@@ -270,6 +270,8 @@ export default function AdminPage() {
   const [tempRegistryUrl, setTempRegistryUrl] = useState('');
   
   const [formGiftEnvelope, setFormGiftEnvelope] = useState(true);
+  const [formGiftBankName, setFormGiftBankName] = useState('');
+  const [formGiftBankOwner, setFormGiftBankOwner] = useState('');
   const [formGiftBankClabe, setFormGiftBankClabe] = useState('');
   
   const [formRsvpPhone, setFormRsvpPhone] = useState(formatWhatsAppPhone('5215512345678'));
@@ -553,6 +555,8 @@ export default function AdminPage() {
     setTempRegistryUrl('');
     
     setFormGiftEnvelope(true);
+    setFormGiftBankName('BBVA');
+    setFormGiftBankOwner('María Fernanda López');
     setFormGiftBankClabe(formatClabe('012180001234567890'));
     
     setFormRsvpPhone(formatWhatsAppPhone('5215512345678'));
@@ -629,6 +633,8 @@ export default function AdminPage() {
     setTempRegistryUrl('');
     
     setFormGiftEnvelope(event.giftEnvelope);
+    setFormGiftBankName(event.giftBankName || '');
+    setFormGiftBankOwner(event.giftBankOwner || '');
     setFormGiftBankClabe(formatClabe(event.giftBankClabe || ''));
     
     setFormRsvpPhone(formatWhatsAppPhone(event.rsvpPhone || ''));
@@ -714,6 +720,8 @@ export default function AdminPage() {
       photos: uploadedPhotos,          // Structured array of urls
       giftRegistries: giftRegistries,  // Structured array of stores
       giftEnvelope: formGiftEnvelope,
+      giftBankName: formGiftBankName.trim() || null,
+      giftBankOwner: formGiftBankOwner.trim() || null,
       giftBankClabe: giftBankClabe || null,
       rsvpPhone: formRsvpPhone.replace(/\D/g, '') || null,
       rsvpDeadline: formRsvpDeadline ? new Date(formRsvpDeadline).toISOString() : null,
@@ -1635,6 +1643,30 @@ export default function AdminPage() {
                   <label htmlFor="gift-envelope" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dark)', cursor: 'pointer' }}>
                     Habilitar Lluvia de Sobres (efectivo)
                   </label>
+                </div>
+
+                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
+                  <label className="rsvp-label" htmlFor="bank-name">Banco</label>
+                  <input
+                    id="bank-name"
+                    type="text"
+                    className="rsvp-input"
+                    placeholder="BBVA"
+                    value={formGiftBankName}
+                    onChange={(e) => setFormGiftBankName(e.target.value)}
+                  />
+                </div>
+
+                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
+                  <label className="rsvp-label" htmlFor="bank-owner">Nombre del titular</label>
+                  <input
+                    id="bank-owner"
+                    type="text"
+                    className="rsvp-input"
+                    placeholder="María Fernanda López"
+                    value={formGiftBankOwner}
+                    onChange={(e) => setFormGiftBankOwner(e.target.value)}
+                  />
                 </div>
 
                 <div className="rsvp-form-group" style={{ marginBottom: 0 }}>

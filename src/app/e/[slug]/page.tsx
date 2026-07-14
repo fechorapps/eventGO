@@ -193,9 +193,21 @@ export default async function EventPage({ params, searchParams }: EventPageProps
   const churchEmbedUrl = getGoogleMapsEmbedUrl(event.churchMapsUrl, event.churchAddress, event.churchName);
   const hallEmbedUrl = getGoogleMapsEmbedUrl(event.hallMapsUrl, event.hallAddress, event.hallName);
   const locationsAreSame = event.locationsAreSame;
+  const photoLikes = await prisma.photoLike.groupBy({
+    by: ['photoUrl'],
+    where: { eventId: event.id },
+    _count: {
+      _all: true,
+    },
+  });
+  const photoLikesByUrl = Object.fromEntries(photoLikes.map((like) => [like.photoUrl, like._count._all]));
 
   const introPhotos = [
-    ...event.photos.map((photo) => ({ url: photo.url, alt: `${event.title} - foto ${photo.id}` })),
+    ...event.photos.map((photo) => ({
+      url: photo.url,
+      alt: `${event.title} - foto ${photo.id}`,
+      likesCount: photoLikesByUrl[photo.url] || 0,
+    })),
     ...(event.heroBackgroundUrl ? [{ url: event.heroBackgroundUrl, alt: `${event.title} - imagen principal` }] : []),
   ];
   const introHasPhotos = introPhotos.length > 0;
@@ -291,7 +303,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         {/* EDITORIAL INTRO */}
         {introHasPhotos && (
           <section className="editorial-intro reveal" id="about" aria-label="Fotos del festejado">
-            <EventPhotoCarousel photos={introPhotos} title={event.title} />
+            <EventPhotoCarousel photos={introPhotos} title={event.title} eventId={event.id} />
           </section>
         )}
 

@@ -43,6 +43,7 @@ model Event {
   
   // Photos relation
   photos          EventPhoto[]
+  photoLikes      PhotoLike[]
   
   // Gift Registries relation
   giftRegistries  GiftRegistry[]
@@ -87,6 +88,20 @@ model EventPhoto {
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("event_photos")
+}
+
+model PhotoLike {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  photoUrl  String   @map("photo_url")
+  clientId  String   @map("client_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, photoUrl, clientId])
+  @@index([eventId, photoUrl])
+  @@map("photo_likes")
 }
 
 model GiftRegistry {

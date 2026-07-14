@@ -1193,6 +1193,11 @@ export default function AdminPage() {
               <Users size={18} style={{ color: 'var(--gold-medium)', marginTop: '8px' }} />
             </div>
             <div className="stat-card">
+              <div className="stat-value">{totalGuests}</div>
+              <div className="stat-label">Total de Invitados</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Registrados</div>
+            </div>
+            <div className="stat-card">
               <div className="stat-value">{totalConfirmed}</div>
               <div className="stat-label">Asistentes Confirmados</div>
               <UserCheck size={18} style={{ color: '#33567D', marginTop: '8px' }} />

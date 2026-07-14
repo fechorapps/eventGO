@@ -1452,6 +1452,38 @@ html {
   object-fit: cover;
 }
 
+.photo-carousel-like-wrapper {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 2;
+}
+
+.photo-carousel-like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.52rem 0.78rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  background: rgba(18, 18, 18, 0.55);
+  color: #fff;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.photo-carousel-like-button.liked {
+  background: rgba(185, 28, 28, 0.92);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.photo-carousel-like-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .photo-carousel-controls {
   display: flex;
   align-items: center;

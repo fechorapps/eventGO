@@ -24,6 +24,7 @@ interface RSVP {
 }
 
 type RSVPFilter = 'all' | 'confirmed' | 'partial' | 'pending';
+type RSVPInvitedByFilter = 'all' | 'papa' | 'mama';
 
 interface EventItineraryItem {
   id: number;
@@ -114,6 +115,7 @@ export default function AdminPage() {
   const [rsvpsLoading, setRsvpsLoading] = useState(false);
   const [rsvpSearchTerm, setRsvpSearchTerm] = useState('');
   const [rsvpStatusFilter, setRsvpStatusFilter] = useState<RSVPFilter>('all');
+  const [rsvpInvitedByFilter, setRsvpInvitedByFilter] = useState<RSVPInvitedByFilter>('all');
 
   // Reusable Mexican Phone Formatter Helper
   const formatMexicanPhone = (value: string) => {
@@ -530,6 +532,50 @@ export default function AdminPage() {
     }
   };
 
+  const handleMarkFamilyAsNotAttending = async (rsvp: RSVP) => {
+    if (!window.confirm(`¿Marcar a la familia "${rsvp.familyName}" como que no asistirán?`)) {
+      return;
+    }
+
+    setRsvpActionLoadingId(rsvp.id);
+    try {
+      const response = await fetch('/api/rsvp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eventId: selectedEvent?.id,
+          familyName: rsvp.familyName,
+          invitedBy: rsvp.invitedBy,
+          invitationSent: rsvp.invitationSent,
+          contactPhone: rsvp.contactPhone,
+          comments: rsvp.comments,
+          guests: rsvp.guests.map((guest) => ({
+            name: guest.name,
+            isChild: guest.isChild,
+            confirmed: false,
+          })),
+          rsvpId: rsvp.id,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'No fue posible marcar la familia como no asistirá.');
+      }
+
+      if (selectedEvent) {
+        await fetchRsvps(selectedEvent.id);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo marcar la familia como no asistirá.');
+    } finally {
+      setRsvpActionLoadingId(null);
+    }
+  };
+
   // RSVP Form Builder Handlers
   const handleAddTempGuest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -910,14 +956,19 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
+  const sourceFilteredRsvps = rsvps.filter((rsvp) => {
+    if (rsvpInvitedByFilter === 'all') return true;
+    return (rsvp.invitedBy || '').toLowerCase() === rsvpInvitedByFilter;
+  });
+
   // Stats for Selected Event RSVPs
-  const totalFamilies = rsvps.length;
+  const totalFamilies = sourceFilteredRsvps.length;
   let totalGuests = 0;
   let totalConfirmed = 0;
   let totalAdultsConfirmed = 0;
   let totalChildrenConfirmed = 0;
 
-  rsvps.forEach(rsvp => {
+  sourceFilteredRsvps.forEach(rsvp => {
     rsvp.guests.forEach(guest => {
       totalGuests++;
       if (guest.confirmed) {
@@ -931,7 +982,7 @@ export default function AdminPage() {
     });
   });
 
-  const filteredRsvps = rsvps.filter(rsvp => {
+  const filteredRsvps = sourceFilteredRsvps.filter(rsvp => {
     const searchLower = rsvpSearchTerm.toLowerCase();
     const familyMatch = rsvp.familyName.toLowerCase().includes(searchLower);
     const phoneMatch = (rsvp.contactPhone || '').toLowerCase().includes(searchLower);
@@ -1382,6 +1433,30 @@ export default function AdminPage() {
             <div className="rsvp-filter-bar">
               <button
                 type="button"
+                className={`rsvp-filter-chip ${rsvpInvitedByFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setRsvpInvitedByFilter('all')}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpInvitedByFilter === 'papa' ? 'active' : ''}`}
+                onClick={() => setRsvpInvitedByFilter('papa')}
+              >
+                Papá
+              </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpInvitedByFilter === 'mama' ? 'active' : ''}`}
+                onClick={() => setRsvpInvitedByFilter('mama')}
+              >
+                Mamá
+              </button>
+            </div>
+
+            <div className="rsvp-filter-bar" style={{ marginTop: '0.85rem' }}>
+              <button
+                type="button"
                 className={`rsvp-filter-chip ${rsvpStatusFilter === 'all' ? 'active' : ''}`}
                 onClick={() => setRsvpStatusFilter('all')}
               >
@@ -1605,9 +1680,29 @@ export default function AdminPage() {
                                     minWidth: 'auto',
                                     height: 'auto'
                                   }}
-                                  title={rsvp.invitationSent ? 'Marcar como no enviada' : 'Marcar como enviada'}
-                                >
+                                title={rsvp.invitationSent ? 'Marcar como no enviada' : 'Marcar como enviada'}
+                              >
                                   {rsvp.invitationSent ? '✓' : '○'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkFamilyAsNotAttending(rsvp)}
+                                  disabled={rsvpActionLoadingId === rsvp.id}
+                                  className="btn-outline"
+                                  style={{
+                                    padding: '0.4rem 0.55rem',
+                                    color: '#b45309',
+                                    borderColor: 'rgba(180, 83, 9, 0.35)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    verticalAlign: 'middle',
+                                    minWidth: 'auto',
+                                    height: 'auto'
+                                  }}
+                                  title="Marcar familia completa como no asistirá"
+                                >
+                                  No asistirán
                                 </button>
                               </>
                             );

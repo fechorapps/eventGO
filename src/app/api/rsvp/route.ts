@@ -25,38 +25,15 @@ export async function POST(request: Request) {
     const body = (await request.json()) as RsvpRequestBody;
     const { eventId, slug, familyName, invitedBy, invitationSent, contactPhone, comments, guests, rsvpId } = body;
 
-    if ((!eventId && !slug) || !familyName || !guests || !Array.isArray(guests) || guests.length === 0) {
-      return NextResponse.json(
-        { error: 'El ID de evento, nombre de la familia y lista de invitados son requeridos.' },
-        { status: 400 }
-      );
-    }
-
-    let targetEventId = eventId;
-    if (!targetEventId && slug) {
-      const event = await prisma.event.findUnique({
-        where: { slug },
-      });
-      if (!event) {
-        return NextResponse.json({ error: 'Evento no encontrado.' }, { status: 404 });
-      }
-      targetEventId = event.id;
-    }
-
-    if (!targetEventId) {
-      return NextResponse.json({ error: 'ID de evento no válido.' }, { status: 400 });
-    }
-
-    // Verify the target event exists
-    const eventExists = await prisma.event.findUnique({
-      where: { id: targetEventId },
-    });
-    if (!eventExists) {
-      return NextResponse.json({ error: 'Evento no encontrado en el sistema.' }, { status: 404 });
-    }
-
     // Check if we are updating an existing RSVP (pre-registered or previously registered)
     if (rsvpId) {
+      if (!familyName || !guests || !Array.isArray(guests) || guests.length === 0) {
+        return NextResponse.json(
+          { error: 'El nombre de la familia y la lista de invitados son requeridos para actualizar.' },
+          { status: 400 }
+        );
+      }
+
       const existingRsvp = await prisma.rsvp.findUnique({
         where: { id: rsvpId },
       });
@@ -93,6 +70,38 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, rsvpId });
       }
+
+      return NextResponse.json({ error: 'La confirmación a actualizar no existe.' }, { status: 404 });
+    }
+
+    if ((!eventId && !slug) || !familyName || !guests || !Array.isArray(guests) || guests.length === 0) {
+      return NextResponse.json(
+        { error: 'El ID de evento, nombre de la familia y lista de invitados son requeridos.' },
+        { status: 400 }
+      );
+    }
+
+    let targetEventId = eventId;
+    if (!targetEventId && slug) {
+      const event = await prisma.event.findUnique({
+        where: { slug },
+      });
+      if (!event) {
+        return NextResponse.json({ error: 'Evento no encontrado.' }, { status: 404 });
+      }
+      targetEventId = event.id;
+    }
+
+    if (!targetEventId) {
+      return NextResponse.json({ error: 'ID de evento no válido.' }, { status: 400 });
+    }
+
+    // Verify the target event exists
+    const eventExists = await prisma.event.findUnique({
+      where: { id: targetEventId },
+    });
+    if (!eventExists) {
+      return NextResponse.json({ error: 'Evento no encontrado en el sistema.' }, { status: 404 });
     }
 
     // Create a new RSVP entry if no rsvpId is provided

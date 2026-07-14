@@ -24,7 +24,7 @@ interface RSVP {
 }
 
 type RSVPFilter = 'all' | 'confirmed' | 'partial' | 'pending';
-type RSVPInvitedByFilter = 'all' | 'papa' | 'mama';
+type RSVPInvitedByFilter = 'all' | 'papa' | 'mama' | 'bebes';
 
 interface EventItineraryItem {
   id: number;
@@ -143,6 +143,13 @@ export default function AdminPage() {
 
   const formatClabe = (value: string) =>
     (value.replace(/\D/g, '').slice(0, 18).match(/.{1,3}/g) || []).join(' ');
+
+  const formatInvitedByLabel = (value: string) => {
+    if (value === 'papa') return 'Papá';
+    if (value === 'mama') return 'Mamá';
+    if (value === 'bebes') return 'Bebés';
+    return 'Sin definir';
+  };
 
   // URL Auto-Prefix & Validation Helpers
   const ensureHttp = (url: string): string => {
@@ -930,7 +937,7 @@ export default function AdminPage() {
     const rows = rsvps.flatMap(rsvp => 
       rsvp.guests.map(guest => [
         rsvp.familyName,
-        rsvp.invitedBy === 'papa' ? 'Papá' : rsvp.invitedBy === 'mama' ? 'Mamá' : 'Sin definir',
+        formatInvitedByLabel(rsvp.invitedBy),
         rsvp.invitationSent ? 'Sí' : 'No',
         rsvp.contactPhone || 'N/A',
         guest.name,
@@ -1267,6 +1274,7 @@ export default function AdminPage() {
                       </option>
                       <option value="papa">Papá</option>
                       <option value="mama">Mamá</option>
+                      <option value="bebes">Bebés</option>
                     </select>
                   </div>
 
@@ -1457,6 +1465,13 @@ export default function AdminPage() {
               >
                 Mamá
               </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpInvitedByFilter === 'bebes' ? 'active' : ''}`}
+                onClick={() => setRsvpInvitedByFilter('bebes')}
+              >
+                Bebés
+              </button>
             </div>
 
             <div className="rsvp-filter-bar" style={{ marginTop: '0.85rem' }}>
@@ -1520,7 +1535,7 @@ export default function AdminPage() {
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{rsvp.familyName}</div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                Invitados por: {rsvp.invitedBy === 'papa' ? 'Papá' : rsvp.invitedBy === 'mama' ? 'Mamá' : 'Sin definir'}
+                                Invitados por: {formatInvitedByLabel(rsvp.invitedBy)}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.3rem' }}>
                                 {(() => {

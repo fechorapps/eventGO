@@ -59,6 +59,13 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
   const hostPhoneDigits = hostPhoneRaw.replace(/\D/g, '');
   const hostPhone = hostPhoneDigits.length === 10 ? `52${hostPhoneDigits}` : hostPhoneDigits;
 
+  const formatInvitedByLabel = (value: string) => {
+    if (value === 'papa') return 'Papá';
+    if (value === 'mama') return 'Mamá';
+    if (value === 'bebes') return 'Bebés';
+    return 'Sin definir';
+  };
+
   const formatMexicanPhone = (value: string) => {
     const numbers = value.replace(/\D/g, '');
     const truncated = numbers.slice(0, 10);
@@ -99,7 +106,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
     let text = '¡Hola! Confirmamos nuestra asistencia al Bautizo ✨\n\n';
     text += `*Familia:* ${familyName}\n`;
     if (invitedBy) {
-      text += `*Invitados por:* ${invitedBy === 'papa' ? 'Papá' : 'Mamá'}\n`;
+      text += `*Invitados por:* ${formatInvitedByLabel(invitedBy)}\n`;
     }
 
     if (confirmedList) {
@@ -254,6 +261,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
             </option>
             <option value="papa">Papá</option>
             <option value="mama">Mamá</option>
+            <option value="bebes">Bebés</option>
           </select>
         </div>
 

@@ -19,7 +19,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "eventGO — Invitaciones",
+  title: "Bautizo Gael Negrete González",
   description: "Invitaciones digitales elegantes para tus eventos.",
 };
 

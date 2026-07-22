@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera } from 'lucide-react';
 import Link from 'next/link';
 import DateField from '@/components/DateField';
+import SeatingPlanner from '@/components/SeatingPlanner';
 
 interface Guest {
   id: number;
@@ -103,7 +104,7 @@ export default function AdminPage() {
   const [loginLoading, setLoginLoading] = useState(false);
 
   // Application Modes: 'list', 'rsvp', 'form'
-  const [viewMode, setViewMode] = useState<'list' | 'rsvp' | 'form'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'rsvp' | 'form' | 'seating'>('list');
 
   // Events list states
   const [events, setEvents] = useState<Event[]>([]);
@@ -1245,10 +1246,16 @@ export default function AdminPage() {
                 {selectedEvent.celebrantName} - {selectedEvent.title}
               </h2>
             </div>
-            <button onClick={() => setViewMode('list')} className="btn-outline">
-              <ChevronLeft size={16} />
-              Volver a Eventos
-            </button>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button onClick={() => setViewMode('seating')} className="btn-gold">
+                <MapPin size={16} />
+                Organizar Mesas
+              </button>
+              <button onClick={() => setViewMode('list')} className="btn-outline">
+                <ChevronLeft size={16} />
+                Volver a Eventos
+              </button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -1839,6 +1846,26 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+        </section>
+      )}
+
+      {/* VIEW: SEATING / TABLE LAYOUT */}
+      {viewMode === 'seating' && selectedEvent && (
+        <section>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+            <div>
+              <span className="guest-type-tag">Acomodo de Mesas</span>
+              <h2 style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', marginTop: '0.2rem', margin: 0 }}>
+                {selectedEvent.celebrantName} - {selectedEvent.title}
+              </h2>
+            </div>
+            <button onClick={() => setViewMode('rsvp')} className="btn-outline">
+              <ChevronLeft size={16} />
+              Volver a Invitados
+            </button>
+          </div>
+
+          <SeatingPlanner eventId={selectedEvent.id} eventName={`${selectedEvent.celebrantName} — ${selectedEvent.title}`} />
         </section>
       )}
 

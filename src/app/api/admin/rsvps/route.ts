@@ -54,6 +54,8 @@ export async function GET(request: Request) {
       invitationSent: rsvp.invitationSent,
       contactPhone: rsvp.contactPhone || '',
       comments: rsvp.comments || '',
+      side: rsvp.side || null,
+      tableId: rsvp.tableId ?? null,
       createdAt: rsvp.createdAt.toISOString(),
       guests: rsvp.guests.map((g) => ({
         id: g.id,

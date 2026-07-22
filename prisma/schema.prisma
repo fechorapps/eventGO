@@ -63,6 +63,7 @@ model Event {
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   rsvps           Rsvp[]
+  tables          EventTable[]
 
   @@map("events")
 }
@@ -127,10 +128,14 @@ model Rsvp {
   contactPhone String?  @map("contact_phone")
   comments     String?
   verificationCode String?  @map("verification_code")
+  // Acomodo de mesas: lado de la familia ('MAMA' | 'PAPA') y mesa asignada.
+  side         String?
+  tableId      Int?     @map("table_id")
   createdAt    DateTime @default(now()) @map("created_at")
   guests       Guest[]
 
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event        Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  table        EventTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
 
   @@map("rsvps")
 }
@@ -146,4 +151,21 @@ model Guest {
   rsvp      Rsvp     @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
 
   @@map("guests")
+}
+
+// Mesa del banquete. Cada mesa pertenece a un lado (Mamá o Papá) y tiene una
+// capacidad de asientos (12 por defecto). Las familias se asignan completas.
+model EventTable {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  name      String   // e.g. "Mesa 1"
+  seats     Int      @default(12)
+  side      String   // 'MAMA' | 'PAPA'
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rsvps     Rsvp[]
+
+  @@map("tables")
 }

@@ -23,7 +23,7 @@ interface RSVP {
   guests: Guest[];
 }
 
-type RSVPFilter = 'all' | 'confirmed' | 'partial' | 'pending' | 'declined';
+type RSVPFilter = 'all' | 'confirmed' | 'pending' | 'declined';
 type RSVPInvitedByFilter = 'all' | 'papa' | 'mama' | 'bebes';
 
 interface EventItineraryItem {
@@ -394,16 +394,12 @@ export default function AdminPage() {
     const confirmedCount = rsvp.guests.filter((guest) => guest.confirmed === true).length;
     const declinedCount = rsvp.guests.filter((guest) => guest.confirmed === false).length;
 
-    if (confirmedCount === totalGuests) {
-      return { key: 'confirmed' as const, label: 'Confirmada', className: 'status-confirmed', summary: `${confirmedCount}/${totalGuests} confirmados` };
+    if (confirmedCount > 0) {
+      return { key: 'confirmed' as const, label: 'Asistirá', className: 'status-confirmed', summary: `${confirmedCount}/${totalGuests} confirmados` };
     }
 
     if (declinedCount === totalGuests) {
       return { key: 'declined' as const, label: 'No asistirá', className: 'status-declined', summary: 'No asistirán' };
-    }
-
-    if (confirmedCount > 0) {
-      return { key: 'partial' as const, label: 'Parcial', className: 'status-partial', summary: `${confirmedCount}/${totalGuests} confirmados` };
     }
 
     return { key: 'pending' as const, label: 'Pendiente', className: 'status-pending', summary: 'Pendiente' };
@@ -1561,14 +1557,7 @@ export default function AdminPage() {
                 className={`rsvp-filter-chip ${rsvpStatusFilter === 'confirmed' ? 'active' : ''}`}
                 onClick={() => setRsvpStatusFilter('confirmed')}
               >
-                Confirmadas
-              </button>
-              <button
-                type="button"
-                className={`rsvp-filter-chip ${rsvpStatusFilter === 'partial' ? 'active' : ''}`}
-                onClick={() => setRsvpStatusFilter('partial')}
-              >
-                Parciales
+                Asistirán
               </button>
               <button
                 type="button"

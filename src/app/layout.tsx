@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import "./tailwind.css";
-import "./globals.css";
 
 // Auto-hospedadas con next/font: elimina el @import render-blocking de Google
 // Fonts y el flash de tipografía al cargar.

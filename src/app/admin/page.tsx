@@ -8,7 +8,7 @@ interface Guest {
   id: number;
   name: string;
   isChild: boolean;
-  confirmed: boolean;
+  confirmed: boolean | null;
 }
 
 interface RSVP {
@@ -23,7 +23,7 @@ interface RSVP {
   guests: Guest[];
 }
 
-type RSVPFilter = 'all' | 'confirmed' | 'partial' | 'pending';
+type RSVPFilter = 'all' | 'confirmed' | 'partial' | 'pending' | 'declined';
 type RSVPInvitedByFilter = 'all' | 'papa' | 'mama' | 'bebes';
 
 interface EventItineraryItem {
@@ -82,7 +82,7 @@ interface Event {
 interface GuestInput {
   name: string;
   isChild: boolean;
-  confirmed: boolean;
+  confirmed: boolean | null;
 }
 
 interface TempItineraryInput {
@@ -385,18 +385,28 @@ export default function AdminPage() {
   }, [viewMode, selectedEvent?.id]);
 
   const getFamilyRsvpStatus = (rsvp: RSVP) => {
-    const confirmedCount = rsvp.guests.filter((guest) => guest.confirmed).length;
     const totalGuests = rsvp.guests.length;
 
-    if (totalGuests === 0 || confirmedCount === 0) {
+    if (totalGuests === 0) {
       return { key: 'pending' as const, label: 'Pendiente', className: 'status-pending', summary: '0 confirmados' };
     }
+
+    const confirmedCount = rsvp.guests.filter((guest) => guest.confirmed === true).length;
+    const declinedCount = rsvp.guests.filter((guest) => guest.confirmed === false).length;
 
     if (confirmedCount === totalGuests) {
       return { key: 'confirmed' as const, label: 'Confirmada', className: 'status-confirmed', summary: `${confirmedCount}/${totalGuests} confirmados` };
     }
 
-    return { key: 'partial' as const, label: 'Parcial', className: 'status-partial', summary: `${confirmedCount}/${totalGuests} confirmados` };
+    if (declinedCount === totalGuests) {
+      return { key: 'declined' as const, label: 'No asistirá', className: 'status-declined', summary: 'No asistirán' };
+    }
+
+    if (confirmedCount > 0) {
+      return { key: 'partial' as const, label: 'Parcial', className: 'status-partial', summary: `${confirmedCount}/${totalGuests} confirmados` };
+    }
+
+    return { key: 'pending' as const, label: 'Pendiente', className: 'status-pending', summary: 'Pendiente' };
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -539,6 +549,52 @@ export default function AdminPage() {
     }
   };
 
+  const handleToggleGuestConfirmed = async (rsvpId: number, guestId: number, currentConfirmed: boolean | null) => {
+    let nextConfirmed: boolean | null = null;
+    if (currentConfirmed === null) {
+      nextConfirmed = true;
+    } else if (currentConfirmed === true) {
+      nextConfirmed = false;
+    } else {
+      nextConfirmed = null;
+    }
+
+    try {
+      const response = await fetch('/api/admin/rsvps', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          guestId,
+          confirmed: nextConfirmed,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'No fue posible actualizar el estado del invitado.');
+      }
+
+      setRsvps((currentRsvps) =>
+        currentRsvps.map((rsvp) => {
+          if (rsvp.id === rsvpId) {
+            return {
+              ...rsvp,
+              guests: rsvp.guests.map((g) =>
+                g.id === guestId ? { ...g, confirmed: data.guest.confirmed } : g
+              ),
+            };
+          }
+          return rsvp;
+        })
+      );
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo actualizar el estado del invitado.');
+    }
+  };
+
   const handleMarkFamilyAsNotAttending = async (rsvp: RSVP) => {
     if (!window.confirm(`¿Marcar a la familia "${rsvp.familyName}" como que no asistirán?`)) {
       return;
@@ -599,7 +655,7 @@ export default function AdminPage() {
       {
         name: tempGuestName.trim(),
         isChild: tempGuestType === 'child',
-        confirmed: false, // Pre-registered manual guests default to pending (false)
+        confirmed: null, // Pre-registered manual guests default to pending (null)
       },
     ]);
     setTempGuestName('');
@@ -942,7 +998,7 @@ export default function AdminPage() {
         rsvp.contactPhone || 'N/A',
         guest.name,
         guest.isChild ? 'Niño' : 'Adulto',
-        guest.confirmed ? 'Sí' : 'Pendiente',
+        guest.confirmed === true ? 'Sí' : guest.confirmed === false ? 'No' : 'Pendiente',
         rsvp.comments || '',
         new Date(rsvp.createdAt).toLocaleString('es-MX')
       ])
@@ -974,11 +1030,18 @@ export default function AdminPage() {
   let totalConfirmed = 0;
   let totalAdultsConfirmed = 0;
   let totalChildrenConfirmed = 0;
+  let totalAdults = 0;
+  let totalChildren = 0;
 
   sourceFilteredRsvps.forEach(rsvp => {
     rsvp.guests.forEach(guest => {
       totalGuests++;
-      if (guest.confirmed) {
+      if (guest.isChild) {
+        totalChildren++;
+      } else {
+        totalAdults++;
+      }
+      if (guest.confirmed === true) {
         totalConfirmed++;
         if (guest.isChild) {
           totalChildrenConfirmed++;
@@ -1200,24 +1263,19 @@ export default function AdminPage() {
               <Users size={18} style={{ color: 'var(--gold-medium)', marginTop: '8px' }} />
             </div>
             <div className="stat-card">
-              <div className="stat-value">{totalGuests}</div>
-              <div className="stat-label">Total de Invitados</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Registrados</div>
+              <div className="stat-value">{totalConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalGuests}</span></div>
+              <div className="stat-label">Total Invitados (Asisten)</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados / Totales</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{totalConfirmed}</div>
-              <div className="stat-label">Asistentes Confirmados</div>
-              <UserCheck size={18} style={{ color: '#33567D', marginTop: '8px' }} />
+              <div className="stat-value">{totalAdultsConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalAdults}</span></div>
+              <div className="stat-label">Adultos (Asisten)</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados / Totales</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{totalAdultsConfirmed}</div>
-              <div className="stat-label">Adultos</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{totalChildrenConfirmed}</div>
-              <div className="stat-label">Niños</div>
-              <Baby size={18} style={{ color: '#1F4E79', marginTop: '8px' }} />
+              <div className="stat-value">{totalChildrenConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalChildren}</span></div>
+              <div className="stat-label">Niños (Asisten)</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados / Totales</div>
             </div>
           </div>
 
@@ -1324,13 +1382,29 @@ export default function AdminPage() {
                         type="button"
                         onClick={() => {
                           const updated = [...newGuestsList];
-                          updated[idx] = { ...updated[idx], confirmed: !updated[idx].confirmed };
+                          const currentVal = updated[idx].confirmed;
+                          let nextVal: boolean | null = null;
+                          if (currentVal === null) nextVal = true;
+                          else if (currentVal === true) nextVal = false;
+                          else nextVal = null;
+                          updated[idx] = { ...updated[idx], confirmed: nextVal };
                           setNewGuestsList(updated);
                         }}
-                        className={`status-badge ${g.confirmed ? 'status-confirmed' : 'status-pending'}`}
-                        style={{ border: 'none', cursor: 'pointer' }}
+                        className={`status-badge ${
+                          g.confirmed === true
+                            ? 'status-confirmed'
+                            : g.confirmed === false
+                            ? 'status-declined'
+                            : 'status-pending'
+                        }`}
+                        style={{ border: 'none', cursor: 'pointer', textTransform: 'none' }}
+                        title="Cambiar estado (Pendiente ➔ Asistirá ➔ No asistirá)"
                       >
-                        {g.confirmed ? 'Asistirá' : 'Pendiente'}
+                        {g.confirmed === true
+                          ? 'Asistirá'
+                          : g.confirmed === false
+                          ? 'No asistirá'
+                          : 'Pendiente'}
                       </button>
                       <button type="button" onClick={() => handleRemoveTempGuest(idx)} className="btn-remove-guest">
                         <Trash2 size={15} />
@@ -1503,6 +1577,13 @@ export default function AdminPage() {
               >
                 Pendientes
               </button>
+              <button
+                type="button"
+                className={`rsvp-filter-chip ${rsvpStatusFilter === 'declined' ? 'active' : ''}`}
+                onClick={() => setRsvpStatusFilter('declined')}
+              >
+                No asistirán
+              </button>
             </div>
 
             {rsvpsLoading && rsvps.length === 0 ? (
@@ -1610,12 +1691,37 @@ export default function AdminPage() {
                                 }}
                               >
                                 <span>{guest.isChild ? '👶' : '👨'}</span>
-                                <span style={{ fontWeight: 500, color: guest.confirmed ? 'var(--text-dark)' : 'var(--text-muted)' }}>
+                                <span style={{ fontWeight: 500, color: guest.confirmed === true ? 'var(--text-dark)' : 'var(--text-muted)' }}>
                                   {guest.name}
                                 </span>
-                                <span className={`status-badge ${guest.confirmed ? 'status-confirmed' : 'status-pending'}`} style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '10px', textTransform: 'none', fontWeight: 600 }}>
-                                  {guest.confirmed ? 'Asistirá' : 'Pendiente'}
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleGuestConfirmed(rsvp.id, guest.id, guest.confirmed)}
+                                  className={`status-badge ${
+                                    guest.confirmed === true
+                                      ? 'status-confirmed'
+                                      : guest.confirmed === false
+                                      ? 'status-declined'
+                                      : 'status-pending'
+                                  }`}
+                                  style={{
+                                    fontSize: '0.65rem',
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  title="Click para cambiar estado (Pendiente ➔ Asistirá ➔ No asistirá)"
+                                >
+                                  {guest.confirmed === true
+                                    ? 'Asistirá'
+                                    : guest.confirmed === false
+                                    ? 'No asistirá'
+                                    : 'Pendiente'}
+                                </button>
                               </div>
                             ))}
                           </div>

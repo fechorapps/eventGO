@@ -105,6 +105,31 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
+
+    // Check if we are updating a single guest's confirmation status
+    if (body?.guestId !== undefined) {
+      const guestId = Number(body.guestId);
+      if (!Number.isInteger(guestId) || guestId <= 0) {
+        return NextResponse.json({ error: 'ID de invitado inválido' }, { status: 400 });
+      }
+
+      const confirmed = body.confirmed === null ? null : Boolean(body.confirmed);
+
+      const guest = await prisma.guest.update({
+        where: { id: guestId },
+        data: { confirmed },
+      });
+
+      return NextResponse.json({
+        success: true,
+        guest: {
+          id: guest.id,
+          confirmed: guest.confirmed,
+        },
+      });
+    }
+
+    // Default: update RSVP invitationSent status
     const id = Number(body?.id);
     const invitationSent = body?.invitationSent;
 
@@ -125,7 +150,7 @@ export async function PATCH(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error('Error updating RSVP invitation status:', error);
-    return NextResponse.json({ error: 'Error al actualizar la invitación' }, { status: 500 });
+    console.error('Error updating RSVP or guest status:', error);
+    return NextResponse.json({ error: 'Error al actualizar la confirmación' }, { status: 500 });
   }
 }

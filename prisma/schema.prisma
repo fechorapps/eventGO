@@ -140,7 +140,7 @@ model Guest {
   rsvpId    Int      @map("rsvp_id")
   name      String
   isChild   Boolean  @default(false) @map("is_child")
-  confirmed Boolean  @default(true)
+  confirmed Boolean? @default(true)
   createdAt DateTime @default(now()) @map("created_at")
 
   rsvp      Rsvp     @relation(fields: [rsvpId], references: [id], onDelete: Cascade)

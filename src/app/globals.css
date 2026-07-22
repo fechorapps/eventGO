@@ -800,6 +800,12 @@ h1, h2, h3, h4 {
   border: 1px solid rgba(198, 89, 17, 0.15);
 }
 
+.select-pending-badge {
+  background-color: rgba(127, 96, 0, 0.08);
+  color: #7F6000;
+  border: 1px solid rgba(127, 96, 0, 0.15);
+}
+
 .pulse-animate {
   animation: select-card-pulse 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
 }

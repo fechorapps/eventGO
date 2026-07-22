@@ -63,7 +63,7 @@ export async function POST(request: Request) {
               rsvpId,
               name: guest.name,
               isChild: guest.isChild || false,
-              confirmed: guest.confirmed === true,
+              confirmed: guest.confirmed === true ? true : (guest.confirmed === false ? false : null),
             })),
           }),
         ]);
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
           create: guests.map((guest) => ({
             name: guest.name,
             isChild: guest.isChild || false,
-            confirmed: guest.confirmed !== false,
+            confirmed: guest.confirmed === true ? true : (guest.confirmed === false ? false : null),
           })),
         },
       },

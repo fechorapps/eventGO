@@ -6,14 +6,14 @@ import { Send, Users, Phone, MessageSquare } from 'lucide-react';
 interface GuestInput {
   name: string;
   isChild: boolean;
-  confirmed: boolean;
+  confirmed: boolean | null;
 }
 
 interface RsvpGuest {
   id?: number;
   name: string;
   isChild: boolean;
-  confirmed: boolean;
+  confirmed: boolean | null;
 }
 
 interface SelectedRsvp {
@@ -94,12 +94,12 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
 
   const buildWhatsAppLink = () => {
     const confirmedList = guests
-      .filter((guest) => guest.confirmed)
+      .filter((guest) => guest.confirmed === true)
       .map((guest) => `• ${guest.name} (${guest.isChild ? 'Niño' : 'Adulto'})`)
       .join('\n');
 
     const declinedList = guests
-      .filter((guest) => !guest.confirmed)
+      .filter((guest) => guest.confirmed === false)
       .map((guest) => `• ${guest.name} (${guest.isChild ? 'Niño' : 'Adulto'})`)
       .join('\n');
 
@@ -291,20 +291,30 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
               key={idx}
               className={`guest-item-card ${animatingIndex === idx ? 'pulse-animate' : ''}`}
               style={{
-                border: guest.confirmed
+                border: guest.confirmed === true
                   ? '1px solid rgba(56, 87, 35, 0.35)'
-                  : '1px solid rgba(198, 89, 17, 0.35)',
-                boxShadow: guest.confirmed
+                  : guest.confirmed === false
+                  ? '1px solid rgba(198, 89, 17, 0.35)'
+                  : '1px solid rgba(148, 163, 184, 0.35)',
+                boxShadow: guest.confirmed === true
                   ? '0 2px 8px rgba(56, 87, 35, 0.05)'
-                  : '0 2px 8px rgba(198, 89, 17, 0.05)',
+                  : guest.confirmed === false
+                  ? '0 2px 8px rgba(198, 89, 17, 0.05)'
+                  : '0 2px 8px rgba(148, 163, 184, 0.05)',
                 transition: 'all 0.4s ease',
               }}
             >
               <div className="guest-info">
                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                   <span className="guest-name-text">{guest.name}</span>
-                  <span className={`selection-indicator ${guest.confirmed ? 'select-yes-badge' : 'select-no-badge'}`}>
-                    {guest.confirmed ? '✓ Asiste' : '✗ No Asiste'}
+                  <span className={`selection-indicator ${
+                    guest.confirmed === true
+                      ? 'select-yes-badge'
+                      : guest.confirmed === false
+                      ? 'select-no-badge'
+                      : 'select-pending-badge'
+                  }`}>
+                    {guest.confirmed === true ? '✓ Asiste' : guest.confirmed === false ? '✗ No Asiste' : '○ Pendiente'}
                   </span>
                 </div>
                 <span className="guest-type-tag" style={{ cursor: 'default' }}>
@@ -316,7 +326,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                   <button
                     type="button"
                     onClick={() => handleSetGuestConfirmed(idx, true)}
-                    className={`toggle-btn toggle-yes ${guest.confirmed ? 'active' : ''}`}
+                    className={`toggle-btn toggle-yes ${guest.confirmed === true ? 'active' : ''}`}
                     disabled={saving}
                   >
                     Asistirá
@@ -324,7 +334,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                   <button
                     type="button"
                     onClick={() => handleSetGuestConfirmed(idx, false)}
-                    className={`toggle-btn toggle-no ${!guest.confirmed ? 'active' : ''}`}
+                    className={`toggle-btn toggle-no ${guest.confirmed === false ? 'active' : ''}`}
                     disabled={saving}
                   >
                     No asistirá

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,18 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Users, Plus, Trash2, RefreshCw, Baby, Pencil, X, AlertTriangle } from 'lucide-react';
+import {
+  Users,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Baby,
+  Pencil,
+  X,
+  AlertTriangle,
+  GripVertical,
+  CheckCircle2,
+} from 'lucide-react';
 
 type Side = 'MAMA' | 'PAPA';
 
@@ -48,6 +59,7 @@ interface SeatingPlannerProps {
 
 const SIDE_LABEL: Record<Side, string> = { MAMA: 'Mamá', PAPA: 'Papá' };
 const SIDE_COLOR: Record<Side, string> = { MAMA: '#B5546F', PAPA: '#33567D' };
+const OVER_COLOR = '#B22222';
 
 function headcount(f: Family) {
   return f.guests.length;
@@ -56,11 +68,12 @@ function confirmedCount(f: Family) {
   return f.guests.filter((g) => g.confirmed === true).length;
 }
 
-// ---------- Family card (draggable) ----------
-function FamilyCard({ family, compact = false }: { family: Family; compact?: boolean }) {
+// ---------- Family card (draggable, used in tray + drag overlay) ----------
+function FamilyCard({ family, overlay = false }: { family: Family; overlay?: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `fam-${family.id}`,
     data: { rsvpId: family.id, side: family.side, size: headcount(family) },
+    disabled: overlay,
   });
 
   const kids = family.guests.filter((g) => g.isChild).length;
@@ -68,42 +81,140 @@ function FamilyCard({ family, compact = false }: { family: Family; compact?: boo
 
   return (
     <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className="seat-family-card"
-      style={{
-        opacity: isDragging ? 0.4 : 1,
-        borderLeft: `4px solid ${sideColor}`,
-        padding: compact ? '0.4rem 0.6rem' : '0.6rem 0.75rem',
-      }}
+      ref={overlay ? undefined : setNodeRef}
+      {...(overlay ? {} : listeners)}
+      {...(overlay ? {} : attributes)}
+      className={`seat-family-card${overlay ? ' is-overlay' : ''}`}
+      style={{ opacity: isDragging ? 0.35 : 1 }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+      <GripVertical size={14} className="seat-grip" aria-hidden />
+      <span className="seat-side-dot" style={{ background: sideColor }} aria-hidden />
+      <div className="seat-family-info">
         <span className="seat-family-name">{family.familyName}</span>
-        <span className="seat-count-badge" title="Integrantes">
-          <Users size={12} /> {headcount(family)}
-        </span>
-      </div>
-      {!compact && (
-        <div className="seat-family-meta">
-          {family.side && (
-            <span className="seat-side-chip" style={{ background: `${sideColor}22`, color: sideColor }}>
-              {SIDE_LABEL[family.side]}
-            </span>
-          )}
+        <span className="seat-family-meta">
+          {family.side ? `Lado ${SIDE_LABEL[family.side]}` : 'Sin lado'}
           {kids > 0 && (
             <span className="seat-kids-chip">
-              <Baby size={11} /> {kids}
+              {' · '}
+              <Baby size={11} aria-hidden /> {kids}
             </span>
           )}
-          <span className="seat-confirmed-chip">{confirmedCount(family)} conf.</span>
-        </div>
-      )}
+          {` · ${confirmedCount(family)} conf.`}
+        </span>
+      </div>
+      <span className="seat-count-badge" title={`${headcount(family)} integrantes`}>
+        <Users size={11} aria-hidden /> {headcount(family)}
+      </span>
     </div>
   );
 }
 
-// ---------- Table (droppable) ----------
+// ---------- Compact chip for a family already seated at a table ----------
+function SeatedChip({ family, color }: { family: Family; color: string }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `fam-${family.id}`,
+    data: { rsvpId: family.id, side: family.side, size: headcount(family) },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className="seat-chip"
+      style={{
+        opacity: isDragging ? 0.35 : 1,
+        background: `${color}12`,
+        borderColor: `${color}33`,
+      }}
+      title={`${family.familyName} · ${headcount(family)} integrantes`}
+    >
+      <span className="seat-chip-name">{family.familyName}</span>
+      <span className="seat-chip-count" style={{ color }}>{headcount(family)}</span>
+    </div>
+  );
+}
+
+// ---------- Round table seen from above ----------
+// `guests` trae los nombres en orden de asiento; el punto i es la persona i.
+function TableViz({
+  seats,
+  guests,
+  color,
+  isOver,
+}: {
+  seats: number;
+  guests: string[];
+  color: string;
+  isOver: boolean;
+}) {
+  const size = 120;
+  const c = size / 2;
+  const ringR = 50;
+  const totalDots = Math.max(seats, guests.length);
+  const dotR = totalDots > 14 ? 4 : 5;
+  const topR = 34;
+  const occupied = guests.length;
+  const over = occupied > seats;
+
+  const dots = [];
+  for (let i = 0; i < totalDots; i++) {
+    const ang = ((-90 + (i * 360) / totalDots) * Math.PI) / 180;
+    const cx = c + ringR * Math.cos(ang);
+    const cy = c + ringR * Math.sin(ang);
+    const filled = i < occupied;
+    const overflowSeat = i >= seats;
+    dots.push(
+      <circle
+        key={i}
+        className="seat-dot"
+        cx={cx}
+        cy={cy}
+        r={dotR}
+        fill={filled ? (overflowSeat ? OVER_COLOR : color) : '#fff'}
+        stroke={filled ? 'none' : 'rgba(0,0,0,0.22)'}
+        strokeWidth={filled ? 0 : 1.4}
+      >
+        <title>{filled ? guests[i] : 'Asiento libre'}</title>
+      </circle>
+    );
+  }
+
+  return (
+    <svg
+      className="seat-table-viz"
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-label={`${occupied} de ${seats} asientos ocupados`}
+    >
+      {dots}
+      <circle
+        cx={c}
+        cy={c}
+        r={topR}
+        fill={isOver ? `${color}1f` : occupied === 0 ? 'rgba(0,0,0,0.02)' : `${color}0d`}
+        stroke={over ? OVER_COLOR : `${color}${occupied === 0 ? '40' : '66'}`}
+        strokeWidth={1.6}
+        strokeDasharray={occupied === 0 ? '4 4' : undefined}
+      />
+      <text
+        x={c}
+        y={c + 1}
+        textAnchor="middle"
+        fontSize="24"
+        fontWeight="600"
+        fill={over ? OVER_COLOR : occupied === 0 ? 'rgba(0,0,0,0.35)' : color}
+      >
+        {occupied}
+      </text>
+      <text x={c} y={c + 17} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.45)">
+        de {seats}
+      </text>
+    </svg>
+  );
+}
+
+// ---------- Table card (droppable) ----------
 function TableCard({
   table,
   families,
@@ -115,54 +226,90 @@ function TableCard({
   onDelete: (id: number) => void;
   onRename: (id: number, name: string) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `table-${table.id}`, data: { tableId: table.id, side: table.side } });
-  const occupied = families.reduce((s, f) => s + headcount(f), 0);
+  const { setNodeRef, isOver } = useDroppable({
+    id: `table-${table.id}`,
+    data: { tableId: table.id, side: table.side },
+  });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(table.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const seatNames = families.flatMap((f) => f.guests.map((g) => g.name));
+  const occupied = seatNames.length;
   const over = occupied > table.seats;
   const color = SIDE_COLOR[table.side];
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  function commitRename() {
+    setEditing(false);
+    const name = draft.trim();
+    if (name && name !== table.name) onRename(table.id, name);
+    else setDraft(table.name);
+  }
 
   return (
     <div
       ref={setNodeRef}
-      className="seat-table-card"
-      style={{
-        borderColor: isOver ? color : 'rgba(0,0,0,0.08)',
-        boxShadow: isOver ? `0 0 0 2px ${color}55` : undefined,
-        background: isOver ? `${color}0d` : '#fff',
-      }}
+      className={`seat-table-card${isOver ? ' is-over' : ''}`}
+      style={{ boxShadow: isOver ? `0 0 0 2px ${color}66, 0 8px 20px rgba(0,0,0,0.08)` : undefined }}
     >
-      <div className="seat-table-head">
+      <button
+        type="button"
+        className="seat-table-delete"
+        onClick={() => onDelete(table.id)}
+        title="Eliminar mesa"
+        aria-label={`Eliminar ${table.name}`}
+      >
+        <Trash2 size={14} />
+      </button>
+
+      <TableViz seats={table.seats} guests={seatNames} color={color} isOver={isOver} />
+
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="seat-table-name-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') {
+              setDraft(table.name);
+              setEditing(false);
+            }
+          }}
+          maxLength={40}
+        />
+      ) : (
         <button
           type="button"
           className="seat-table-name"
-          onClick={() => {
-            const name = window.prompt('Nombre de la mesa:', table.name);
-            if (name && name.trim() && name.trim() !== table.name) onRename(table.id, name.trim());
-          }}
+          onClick={() => setEditing(true)}
           title="Renombrar mesa"
         >
-          {table.name} <Pencil size={11} style={{ opacity: 0.5 }} />
+          {table.name} <Pencil size={11} aria-hidden style={{ opacity: 0.45 }} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            className="seat-occupancy"
-            style={{ background: over ? '#fdeaea' : `${color}18`, color: over ? '#B22222' : color }}
-          >
-            {over && <AlertTriangle size={12} />}
-            {occupied} / {table.seats}
-          </span>
-          <button type="button" className="seat-icon-btn" onClick={() => onDelete(table.id)} title="Eliminar mesa">
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
+      )}
 
-      <div className="seat-table-body">
-        {families.length === 0 ? (
-          <div className="seat-empty-drop">Arrastra familias aquí</div>
-        ) : (
-          families.map((f) => <FamilyCard key={f.id} family={f} compact />)
-        )}
-      </div>
+      {over && (
+        <span className="seat-over-chip">
+          <AlertTriangle size={11} aria-hidden /> {occupied - table.seats} sobrecupo
+        </span>
+      )}
+
+      {families.length === 0 ? (
+        <span className="seat-empty-hint">Arrastra familias aquí</span>
+      ) : (
+        <div className="seat-table-chips">
+          {families.map((f) => (
+            <SeatedChip key={f.id} family={f} color={color} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -182,11 +329,13 @@ function UnassignedTray({ families }: { families: Family[] }) {
       }}
     >
       <div className="seat-tray-title">
-        <Users size={15} /> Familias sin asignar
+        <Users size={15} aria-hidden /> Familias sin asignar
         <span className="seat-tray-count">{families.length}</span>
       </div>
       {families.length === 0 ? (
-        <p className="seat-tray-empty">Todas las familias están asignadas 🎉</p>
+        <p className="seat-tray-empty">
+          <CheckCircle2 size={15} aria-hidden /> Todas las familias están asignadas
+        </p>
       ) : (
         <div className="seat-tray-list">
           {families.map((f) => (
@@ -198,8 +347,8 @@ function UnassignedTray({ families }: { families: Family[] }) {
   );
 }
 
-// ---------- Side column ----------
-function SideColumn({
+// ---------- Side section ----------
+function SideSection({
   side,
   tables,
   familiesByTable,
@@ -215,13 +364,22 @@ function SideColumn({
   onRenameTable: (id: number, name: string) => void;
 }) {
   const color = SIDE_COLOR[side];
-  const totalSeated = tables.reduce((s, t) => s + (familiesByTable.get(t.id)?.reduce((a, f) => a + headcount(f), 0) || 0), 0);
+  const totalSeated = tables.reduce(
+    (s, t) => s + (familiesByTable.get(t.id)?.reduce((a, f) => a + headcount(f), 0) || 0),
+    0
+  );
+  const totalSeats = tables.reduce((s, t) => s + t.seats, 0);
 
   return (
-    <div className="seat-side-column">
-      <div className="seat-side-header" style={{ borderColor: color }}>
-        <span style={{ color, fontWeight: 700 }}>Lado {SIDE_LABEL[side]}</span>
-        <span className="seat-side-total">{tables.length} mesa(s) · {totalSeated} pers.</span>
+    <section className="seat-side-column" style={{ background: `${color}08` }}>
+      <div className="seat-side-header">
+        <span className="seat-side-title" style={{ color }}>
+          <span className="seat-side-dot" style={{ background: color }} aria-hidden />
+          Lado {SIDE_LABEL[side]}
+        </span>
+        <span className="seat-side-total">
+          {tables.length} {tables.length === 1 ? 'mesa' : 'mesas'} · {totalSeated}/{totalSeats} asientos
+        </span>
       </div>
 
       <div className="seat-side-tables">
@@ -234,12 +392,17 @@ function SideColumn({
             onRename={onRenameTable}
           />
         ))}
+        <button
+          type="button"
+          className="seat-add-table"
+          style={{ color, borderColor: `${color}55` }}
+          onClick={() => onAddTable(side)}
+        >
+          <Plus size={18} aria-hidden />
+          <span>Agregar mesa</span>
+        </button>
       </div>
-
-      <button type="button" className="seat-add-table" style={{ color, borderColor: `${color}55` }} onClick={() => onAddTable(side)}>
-        <Plus size={15} /> Agregar mesa {SIDE_LABEL[side]}
-      </button>
-    </div>
+    </section>
   );
 }
 
@@ -405,6 +568,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   }
 
   const activeFamily = activeId != null ? families.find((f) => f.id === activeId) || null : null;
+  const pct = totalGuests > 0 ? Math.round((seatedGuests / totalGuests) * 100) : 0;
 
   if (loading) {
     return (
@@ -420,21 +584,38 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
       <div className="seat-planner">
         {/* Summary */}
         <div className="seat-summary">
-          <div>
+          <div className="seat-summary-info">
             <strong>{eventName || 'Acomodo de mesas'}</strong>
             <span className="seat-summary-sub">
-              {families.length} familias · {seatedGuests}/{totalGuests} personas sentadas · {tables.length} mesas
+              {families.length} familias · {seatedGuests}/{totalGuests} personas sentadas ({pct}%) · {tables.length}{' '}
+              {tables.length === 1 ? 'mesa' : 'mesas'}
             </span>
+            <div
+              className="seat-progress"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Personas sentadas"
+            >
+              <div className="seat-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
           </div>
           <button type="button" className="btn-outline" onClick={load} style={{ padding: '0.4rem 0.9rem' }}>
-            <RefreshCw size={14} /> Actualizar
+            <RefreshCw size={14} aria-hidden /> Actualizar
           </button>
         </div>
 
         {error && (
           <div className="seat-error">
-            <AlertTriangle size={15} /> {error}
-            <button type="button" onClick={() => setError('')} className="seat-icon-btn" style={{ marginLeft: 'auto' }}>
+            <AlertTriangle size={15} aria-hidden /> {error}
+            <button
+              type="button"
+              onClick={() => setError('')}
+              className="seat-icon-btn"
+              style={{ marginLeft: 'auto' }}
+              aria-label="Cerrar error"
+            >
               <X size={14} />
             </button>
           </div>
@@ -445,7 +626,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
         {/* Sides */}
         <div className="seat-sides">
-          <SideColumn
+          <SideSection
             side="MAMA"
             tables={tablesBySide.MAMA}
             familiesByTable={familiesByTable}
@@ -453,7 +634,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
             onDeleteTable={deleteTable}
             onRenameTable={renameTable}
           />
-          <SideColumn
+          <SideSection
             side="PAPA"
             tables={tablesBySide.PAPA}
             familiesByTable={familiesByTable}
@@ -464,7 +645,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
         </div>
       </div>
 
-      <DragOverlay>{activeFamily ? <FamilyCard family={activeFamily} /> : null}</DragOverlay>
+      <DragOverlay>{activeFamily ? <FamilyCard family={activeFamily} overlay /> : null}</DragOverlay>
     </DndContext>
   );
 }

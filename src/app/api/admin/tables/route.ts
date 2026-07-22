@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/admin/tables { eventId, side, name?, seats? } -> crea una mesa
+// POST /api/admin/tables { eventId, side, name? } -> crea una mesa (siempre de 12 asientos)
 export async function POST(request: Request) {
   try {
     if (!(await verifyAdmin())) {
@@ -52,7 +52,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'El lado debe ser MAMA o PAPA.' }, { status: 400 });
     }
 
-    const seats = Number.isInteger(Number(body?.seats)) && Number(body.seats) > 0 ? Number(body.seats) : 12;
+    // Regla del evento: todas las mesas son de 12 asientos.
+    const seats = 12;
 
     // Nombre y posición automáticos según cuántas mesas del mismo lado existen.
     const countSameSide = await prisma.eventTable.count({ where: { eventId, side } });
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT /api/admin/tables { id, name?, seats?, side?, position? } -> actualiza una mesa
+// PUT /api/admin/tables { id, name?, side?, position? } -> actualiza una mesa
 export async function PUT(request: Request) {
   try {
     if (!(await verifyAdmin())) {
@@ -85,11 +86,8 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'ID de mesa inválido' }, { status: 400 });
     }
 
-    const data: { name?: string; seats?: number; side?: Side; position?: number } = {};
+    const data: { name?: string; side?: Side; position?: number } = {};
     if (typeof body?.name === 'string' && body.name.trim()) data.name = body.name.trim();
-    if (body?.seats !== undefined && Number.isInteger(Number(body.seats)) && Number(body.seats) > 0) {
-      data.seats = Number(body.seats);
-    }
     if (body?.side !== undefined) {
       if (!isSide(body.side)) {
         return NextResponse.json({ error: 'Lado inválido' }, { status: 400 });

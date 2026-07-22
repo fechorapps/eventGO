@@ -135,8 +135,6 @@ function SeatedChip({ family, color }: { family: Family; color: string }) {
   );
 }
 
-// ---------- Round table seen from above ----------
-// `guests` trae los nombres en orden de asiento; el punto i es la persona i.
 function TableViz({
   seats,
   guests,
@@ -148,12 +146,12 @@ function TableViz({
   color: string;
   isOver: boolean;
 }) {
-  const size = 120;
+  const size = 260; // Ampliado para dar espacio a los nombres
   const c = size / 2;
-  const ringR = 50;
+  const ringR = 60; // Radio del anillo de asientos
   const totalDots = Math.max(seats, guests.length);
-  const dotR = totalDots > 14 ? 4 : 5;
-  const topR = 34;
+  const dotR = totalDots > 14 ? 5 : 7;
+  const topR = 40;
   const occupied = guests.length;
   const over = occupied > seats;
 
@@ -164,25 +162,55 @@ function TableViz({
     const cy = c + ringR * Math.sin(ang);
     const filled = i < occupied;
     const overflowSeat = i >= seats;
+    
+    // Calcular posición y anclaje del texto según el ángulo
+    const textR = ringR + dotR + 6;
+    const tx = c + textR * Math.cos(ang);
+    const ty = c + textR * Math.sin(ang);
+    
+    let anchor = "middle";
+    let baseline = "middle";
+    if (Math.cos(ang) > 0.1) anchor = "start";
+    else if (Math.cos(ang) < -0.1) anchor = "end";
+    
+    if (Math.sin(ang) > 0.1) baseline = "hanging";
+    else if (Math.sin(ang) < -0.1) baseline = "baseline";
+
     dots.push(
-      <circle
-        key={i}
-        className="seat-dot"
-        cx={cx}
-        cy={cy}
-        r={dotR}
-        fill={filled ? (overflowSeat ? OVER_COLOR : color) : '#fff'}
-        stroke={filled ? 'none' : 'rgba(0,0,0,0.22)'}
-        strokeWidth={filled ? 0 : 1.4}
-      >
-        <title>{filled ? guests[i] : 'Asiento libre'}</title>
-      </circle>
+      <g key={i}>
+        <circle
+          className="seat-dot"
+          cx={cx}
+          cy={cy}
+          r={dotR}
+          fill={filled ? (overflowSeat ? OVER_COLOR : color) : '#fff'}
+          stroke={filled ? 'none' : 'rgba(0,0,0,0.22)'}
+          strokeWidth={filled ? 0 : 1.4}
+        >
+          <title>{filled ? guests[i] : 'Asiento libre'}</title>
+        </circle>
+        {filled && (
+          <text
+            x={tx}
+            y={ty}
+            fill="#555"
+            fontSize="10"
+            fontWeight="500"
+            textAnchor={anchor}
+            alignmentBaseline={baseline}
+            pointerEvents="none"
+          >
+            {guests[i].split(' ')[0]} {/* Mostrar solo el primer nombre para no saturar */}
+          </text>
+        )}
+      </g>
     );
   }
 
   return (
     <svg
       className="seat-table-viz"
+      style={{ width: '100%', height: 'auto', maxWidth: '280px', margin: '0 auto', display: 'block' }}
       viewBox={`0 0 ${size} ${size}`}
       role="img"
       aria-label={`${occupied} de ${seats} asientos ocupados`}

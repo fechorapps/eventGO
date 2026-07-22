@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin } from '@/lib/auth';
-import { generateRsvpSlug } from '@/lib/rsvp-slug';
+import { ensureUniqueRsvpSlug } from '@/lib/rsvp-slug';
 
 export async function GET(request: Request) {
   try {
@@ -33,29 +33,16 @@ export async function GET(request: Request) {
       },
     });
 
-    const missingSlugRsvps = rsvpsData.filter((rsvp) => !rsvp.slug);
-    if (missingSlugRsvps.length > 0) {
-      await prisma.$transaction(
-        missingSlugRsvps.map((rsvp) =>
-          prisma.rsvp.update({
-            where: { id: rsvp.id },
-            data: { slug: generateRsvpSlug(rsvp.familyName) },
-          })
-        )
-      );
-      rsvpsData.splice(0, rsvpsData.length, ...(await prisma.rsvp.findMany({
-        where,
-        include: {
-          guests: {
-            orderBy: {
-              id: 'asc',
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      })));
+    // Auto-reparación: familias creadas antes de que se generara el slug quedan
+    // con slug null y su liga personalizada (/e/...?f=) viaja vacía, por lo que
+    // no precarga a nadie. Les asignamos un slug la primera vez que el panel las
+    // lista, para que el botón de compartir por WhatsApp funcione.
+    for (const rsvp of rsvpsData) {
+      if (!rsvp.slug) {
+        const slug = await ensureUniqueRsvpSlug(prisma.rsvp, rsvp.familyName);
+        await prisma.rsvp.update({ where: { id: rsvp.id }, data: { slug } });
+        rsvp.slug = slug;
+      }
     }
 
     // Map database properties to front-end camelCase structure

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { generateRsvpSlug } from '@/lib/rsvp-slug';
+import { ensureUniqueRsvpSlug } from '@/lib/rsvp-slug';
 
 interface RsvpGuestPayload {
   name: string;
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       });
 
       if (existingRsvp) {
-        const slug = existingRsvp.slug || generateRsvpSlug(familyName.trim());
+        const slug = existingRsvp.slug || await ensureUniqueRsvpSlug(prisma.rsvp, familyName.trim());
         await prisma.$transaction([
           // 1. Delete existing guests for this RSVP to avoid duplicates
           prisma.guest.deleteMany({
@@ -104,12 +104,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Evento no encontrado en el sistema.' }, { status: 404 });
     }
 
+
     // Create a new RSVP entry if no rsvpId is provided
     const randomCode = Math.floor(1000 + Math.random() * 9000).toString(); // Generate random 4-digit verification code
+    const newSlug = await ensureUniqueRsvpSlug(prisma.rsvp, familyName.trim());
     const rsvp = await prisma.rsvp.create({
       data: {
         eventId: targetEventId,
-        slug: generateRsvpSlug(familyName.trim()),
+        slug: newSlug,
         familyName: familyName.trim(),
         invitedBy: invitedBy?.trim() || null,
         invitationSent: invitationSent === true,

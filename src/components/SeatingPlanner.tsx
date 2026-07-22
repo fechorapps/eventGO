@@ -146,6 +146,8 @@ function TableViz({
   color: string;
   isOver: boolean;
 }) {
+  const [hoverInfo, setHoverInfo] = useState<{name: string, isFree: boolean, top: string, left: string} | null>(null);
+
   const size = 260; // Ampliado para dar espacio a los nombres
   const c = size / 2;
   const ringR = 60; // Radio del anillo de asientos
@@ -186,9 +188,10 @@ function TableViz({
           fill={filled ? (overflowSeat ? OVER_COLOR : color) : '#fff'}
           stroke={filled ? 'none' : 'rgba(0,0,0,0.22)'}
           strokeWidth={filled ? 0 : 1.4}
-        >
-          <title>{filled ? guests[i] : 'Asiento libre'}</title>
-        </circle>
+          onMouseEnter={() => setHoverInfo({ name: filled ? guests[i] : 'Asiento libre', isFree: !filled, left: `${(cx / size) * 100}%`, top: `${(cy / size) * 100}%` })}
+          onMouseLeave={() => setHoverInfo(null)}
+          style={{ cursor: 'pointer', transition: 'r 0.2s, fill 0.2s' }}
+        />
         {filled && (
           <text
             x={tx}
@@ -208,37 +211,51 @@ function TableViz({
   }
 
   return (
-    <svg
-      className="seat-table-viz"
-      style={{ width: '100%', height: 'auto', maxWidth: '280px', margin: '0 auto', display: 'block' }}
-      viewBox={`0 0 ${size} ${size}`}
-      role="img"
-      aria-label={`${occupied} de ${seats} asientos ocupados`}
-    >
-      {dots}
-      <circle
-        cx={c}
-        cy={c}
-        r={topR}
-        fill={isOver ? `${color}1f` : occupied === 0 ? 'rgba(0,0,0,0.02)' : `${color}0d`}
-        stroke={over ? OVER_COLOR : `${color}${occupied === 0 ? '40' : '66'}`}
-        strokeWidth={1.6}
-        strokeDasharray={occupied === 0 ? '4 4' : undefined}
-      />
-      <text
-        x={c}
-        y={c + 1}
-        textAnchor="middle"
-        fontSize="24"
-        fontWeight="600"
-        fill={over ? OVER_COLOR : occupied === 0 ? 'rgba(0,0,0,0.35)' : color}
+    <div className="relative w-full max-w-[280px] mx-auto">
+      <svg
+        className="seat-table-viz"
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-label={`${occupied} de ${seats} asientos ocupados`}
       >
-        {occupied}
-      </text>
-      <text x={c} y={c + 17} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.45)">
-        de {seats}
-      </text>
-    </svg>
+        {dots}
+        <circle
+          cx={c}
+          cy={c}
+          r={topR}
+          fill={isOver ? `${color}1f` : occupied === 0 ? 'rgba(0,0,0,0.02)' : `${color}0d`}
+          stroke={over ? OVER_COLOR : `${color}${occupied === 0 ? '40' : '66'}`}
+          strokeWidth={1.6}
+          strokeDasharray={occupied === 0 ? '4 4' : undefined}
+        />
+        <text
+          x={c}
+          y={c + 1}
+          textAnchor="middle"
+          fontSize="24"
+          fontWeight="600"
+          fill={over ? OVER_COLOR : occupied === 0 ? 'rgba(0,0,0,0.35)' : color}
+        >
+          {occupied}
+        </text>
+        <text x={c} y={c + 17} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.45)">
+          de {seats}
+        </text>
+      </svg>
+      
+      {/* Tooltip moderno flotante */}
+      {hoverInfo && (
+        <div
+          className="absolute z-50 pointer-events-none -translate-x-1/2 -translate-y-[130%] bg-gray-900 text-white text-xs px-3 py-1.5 rounded shadow-lg whitespace-nowrap opacity-100 transition-opacity animate-in fade-in zoom-in-95 duration-200"
+          style={{ left: hoverInfo.left, top: hoverInfo.top }}
+        >
+          {hoverInfo.name}
+          {/* Triángulo inferior del tooltip */}
+          <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-gray-900"></div>
+        </div>
+      )}
+    </div>
   );
 }
 

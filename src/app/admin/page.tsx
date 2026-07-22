@@ -1247,10 +1247,10 @@ export default function AdminPage() {
               </h2>
             </div>
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <button onClick={() => setViewMode('seating')} className="btn-gold">
+              <Link href={`/admin/mesas/${selectedEvent.id}`} className="btn-gold" style={{ textDecoration: 'none' }}>
                 <MapPin size={16} />
                 Organizar Mesas
-              </button>
+              </Link>
               <button onClick={() => setViewMode('list')} className="btn-outline">
                 <ChevronLeft size={16} />
                 Volver a Eventos

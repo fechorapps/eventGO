@@ -68,8 +68,7 @@ function confirmedCount(f: Family) {
   return f.guests.filter((g) => g.confirmed === true).length;
 }
 
-// ---------- Family card (draggable, used in tray + drag overlay) ----------
-function FamilyCard({ family, overlay = false }: { family: Family; overlay?: boolean }) {
+function FamilyCard({ family, overlay = false, onClick }: { family: Family; overlay?: boolean; onClick?: () => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `fam-${family.id}`,
     data: { rsvpId: family.id, side: family.side, size: headcount(family) },
@@ -85,7 +84,8 @@ function FamilyCard({ family, overlay = false }: { family: Family; overlay?: boo
       {...(overlay ? {} : listeners)}
       {...(overlay ? {} : attributes)}
       className={`seat-family-card${overlay ? ' is-overlay' : ''}`}
-      style={{ opacity: isDragging ? 0.35 : 1 }}
+      style={{ opacity: isDragging ? 0.35 : 1, cursor: overlay ? 'default' : 'pointer' }}
+      onClick={onClick}
     >
       <GripVertical size={14} className="seat-grip" aria-hidden />
       <span className="seat-side-dot" style={{ background: sideColor }} aria-hidden />
@@ -110,7 +110,7 @@ function FamilyCard({ family, overlay = false }: { family: Family; overlay?: boo
 }
 
 // ---------- Compact chip for a family already seated at a table ----------
-function SeatedChip({ family, color }: { family: Family; color: string }) {
+function SeatedChip({ family, color, onClick }: { family: Family; color: string; onClick?: () => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `fam-${family.id}`,
     data: { rsvpId: family.id, side: family.side, size: headcount(family) },
@@ -126,8 +126,10 @@ function SeatedChip({ family, color }: { family: Family; color: string }) {
         opacity: isDragging ? 0.35 : 1,
         background: `${color}12`,
         borderColor: `${color}33`,
+        cursor: 'pointer'
       }}
       title={`${family.familyName} · ${headcount(family)} integrantes`}
+      onClick={onClick}
     >
       <span className="seat-chip-name">{family.familyName}</span>
       <span className="seat-chip-count" style={{ color }}>{headcount(family)}</span>
@@ -265,11 +267,15 @@ function TableCard({
   families,
   onDelete,
   onRename,
+  onSelectTable,
+  onSelectFamily,
 }: {
   table: TableRow;
   families: Family[];
   onDelete: (id: number) => void;
   onRename: (id: number, name: string) => void;
+  onSelectTable: (t: TableRow) => void;
+  onSelectFamily: (f: Family) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `table-${table.id}`,
@@ -311,7 +317,9 @@ function TableCard({
         <Trash2 size={14} />
       </button>
 
-      <TableViz seats={table.seats} guests={seatNames} color={color} isOver={isOver} />
+      <div onClick={() => onSelectTable(table)} style={{ cursor: 'pointer' }} title="Ver lista de invitados">
+        <TableViz seats={table.seats} guests={seatNames} color={color} isOver={isOver} />
+      </div>
 
       {editing ? (
         <input
@@ -351,7 +359,7 @@ function TableCard({
       ) : (
         <div className="seat-table-chips">
           {families.map((f) => (
-            <SeatedChip key={f.id} family={f} color={color} />
+            <SeatedChip key={f.id} family={f} color={color} onClick={() => onSelectFamily(f)} />
           ))}
         </div>
       )}
@@ -362,7 +370,7 @@ function TableCard({
 // ---------- Unassigned tray (droppable) ----------
 // Debe ser su propio componente para que useDroppable quede DENTRO del
 // <DndContext> y registre correctamente la zona de "sin asignar".
-function UnassignedTray({ families }: { families: Family[] }) {
+function UnassignedTray({ families, onSelectFamily }: { families: Family[]; onSelectFamily: (f: Family) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'unassigned' });
   return (
     <div
@@ -384,7 +392,7 @@ function UnassignedTray({ families }: { families: Family[] }) {
       ) : (
         <div className="seat-tray-list">
           {families.map((f) => (
-            <FamilyCard key={f.id} family={f} />
+            <FamilyCard key={f.id} family={f} onClick={() => onSelectFamily(f)} />
           ))}
         </div>
       )}
@@ -392,7 +400,6 @@ function UnassignedTray({ families }: { families: Family[] }) {
   );
 }
 
-// ---------- Side section ----------
 function SideSection({
   side,
   tables,
@@ -400,6 +407,8 @@ function SideSection({
   onAddTable,
   onDeleteTable,
   onRenameTable,
+  onSelectTable,
+  onSelectFamily,
 }: {
   side: Side;
   tables: TableRow[];
@@ -407,6 +416,8 @@ function SideSection({
   onAddTable: (side: Side) => void;
   onDeleteTable: (id: number) => void;
   onRenameTable: (id: number, name: string) => void;
+  onSelectTable: (t: TableRow) => void;
+  onSelectFamily: (f: Family) => void;
 }) {
   const color = SIDE_COLOR[side];
   const totalSeated = tables.reduce(
@@ -435,6 +446,8 @@ function SideSection({
             families={familiesByTable.get(t.id) || []}
             onDelete={onDeleteTable}
             onRename={onRenameTable}
+            onSelectTable={onSelectTable}
+            onSelectFamily={onSelectFamily}
           />
         ))}
         <button
@@ -457,6 +470,10 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState<number | null>(null);
+
+  // Estados para modales en móvil
+  const [mobileFamilySelect, setMobileFamilySelect] = useState<Family | null>(null);
+  const [mobileTableSelect, setMobileTableSelect] = useState<TableRow | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -667,7 +684,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
         )}
 
         {/* Unassigned tray */}
-        <UnassignedTray families={unassigned} />
+        <UnassignedTray families={unassigned} onSelectFamily={setMobileFamilySelect} />
 
         {/* Sides */}
         <div className="seat-sides">
@@ -678,6 +695,8 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
             onAddTable={addTable}
             onDeleteTable={deleteTable}
             onRenameTable={renameTable}
+            onSelectTable={setMobileTableSelect}
+            onSelectFamily={setMobileFamilySelect}
           />
           <SideSection
             side="PAPA"
@@ -686,9 +705,100 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
             onAddTable={addTable}
             onDeleteTable={deleteTable}
             onRenameTable={renameTable}
+            onSelectTable={setMobileTableSelect}
+            onSelectFamily={setMobileFamilySelect}
           />
         </div>
       </div>
+
+      {/* MODAL: Mover familia (Bottom Sheet) */}
+      {mobileFamilySelect && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 transition-opacity sm:items-center animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-[1.3rem] text-gold-dark font-serif font-medium">Asignar mesa</h3>
+              <button onClick={() => setMobileFamilySelect(null)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600"><X size={22} /></button>
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Selecciona el destino para mover a la <strong>{mobileFamilySelect.familyName}</strong> ({headcount(mobileFamilySelect)} pax).</p>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => { assign(mobileFamilySelect.id, null); setMobileFamilySelect(null); }}
+                className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-gold-medium transition-colors flex items-center justify-between bg-gray-50"
+              >
+                <span className="font-medium text-gray-700">Sin asignar (Remover de la mesa)</span>
+                {mobileFamilySelect.tableId == null && <CheckCircle2 size={20} className="text-gold-dark" />}
+              </button>
+              
+              {tables.map(t => {
+                const currentOcc = (familiesByTable.get(t.id) || []).reduce((sum, f) => sum + headcount(f), 0);
+                const isCurrent = mobileFamilySelect.tableId === t.id;
+                return (
+                  <button 
+                    key={t.id}
+                    onClick={() => { assign(mobileFamilySelect.id, t.id); setMobileFamilySelect(null); }}
+                    className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-gold-medium hover:bg-gold-medium/5 transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="font-semibold text-gray-800 text-[1.05rem] mb-1">{t.name}</div>
+                      <div className="text-[0.75rem] uppercase tracking-widest text-gray-500">
+                        Lado {SIDE_LABEL[t.side]} • {currentOcc}/{t.seats} ocupados
+                      </div>
+                    </div>
+                    {isCurrent && <CheckCircle2 size={20} className="text-gold-dark" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Ver lista de invitados de la mesa (Bottom Sheet) */}
+      {mobileTableSelect && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 transition-opacity sm:items-center animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-[1.5rem] text-gold-dark font-serif font-medium leading-none mb-2">{mobileTableSelect.name}</h3>
+                <span className="text-[0.75rem] uppercase tracking-widest text-gray-500 bg-gray-100 px-2 py-1 rounded">Lado {SIDE_LABEL[mobileTableSelect.side]}</span>
+              </div>
+              <button onClick={() => setMobileTableSelect(null)} className="p-2 -mr-2 -mt-2 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 border-b border-gray-100 pb-2">Invitados sentados aquí</h4>
+              <div className="flex flex-col gap-3">
+                {(!familiesByTable.get(mobileTableSelect.id) || familiesByTable.get(mobileTableSelect.id)!.length === 0) && (
+                  <p className="text-gray-400 text-sm italic text-center py-6">Esta mesa está vacía.</p>
+                )}
+                {familiesByTable.get(mobileTableSelect.id)?.map(fam => (
+                  <div key={fam.id} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex justify-between items-center gap-4">
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-800 text-[1rem] mb-2">{fam.familyName}</div>
+                      <div className="text-[0.85rem] text-gray-600 flex flex-col gap-1.5 pl-3 border-l-[3px] border-gold-medium/40">
+                        {fam.guests.map(g => (
+                          <span key={g.id} className="flex items-center gap-2">
+                            {g.name} 
+                            {g.isChild && <span className="bg-blue-50 text-blue-600 text-[0.6rem] uppercase px-1.5 py-0.5 rounded-full font-bold">Niño</span>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => { setMobileTableSelect(null); setMobileFamilySelect(fam); }}
+                      className="shrink-0 text-gold-dark bg-gold-medium/10 p-3 rounded-full hover:bg-gold-medium/20 transition-colors"
+                      title="Mover de mesa"
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <DragOverlay>{activeFamily ? <FamilyCard family={activeFamily} overlay /> : null}</DragOverlay>
     </DndContext>

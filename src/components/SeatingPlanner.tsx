@@ -170,8 +170,8 @@ function TableViz({
     const tx = c + textR * Math.cos(ang);
     const ty = c + textR * Math.sin(ang);
     
-    let anchor = "middle";
-    let baseline = "middle";
+    let anchor: "start" | "middle" | "end" = "middle";
+    let baseline: "hanging" | "middle" | "baseline" = "middle";
     if (Math.cos(ang) > 0.1) anchor = "start";
     else if (Math.cos(ang) < -0.1) anchor = "end";
     

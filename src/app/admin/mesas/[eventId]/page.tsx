@@ -3,8 +3,18 @@ import SeatingPlanner from '@/components/SeatingPlanner';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 
-export default function MesasPage({ params }: { params: { eventId: string } }) {
-  const eventId = parseInt(params.eventId, 10);
+export default async function MesasPage({ params }: { params: Promise<{ eventId: string }> }) {
+  const resolvedParams = await params;
+  const eventId = parseInt(resolvedParams.eventId, 10);
+
+  if (isNaN(eventId)) {
+    return (
+      <div className="admin-container" style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--gold-dark)' }}>Error: ID de evento inválido</h2>
+        <Link href="/admin" className="btn-outline" style={{ marginTop: '1rem', display: 'inline-flex' }}>Volver</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-container" style={{ minHeight: '100vh', padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>

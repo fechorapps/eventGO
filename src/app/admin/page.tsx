@@ -256,6 +256,10 @@ export default function AdminPage() {
   const [rsvpAddError, setRsvpAddError] = useState('');
   const [rsvpAddLoading, setRsvpAddLoading] = useState(false);
 
+  // KPI Detail Modal states
+  const [activeKpiModal, setActiveKpiModal] = useState<'families' | 'all_confirmed' | 'adults_confirmed' | 'children_confirmed' | 'declined' | null>(null);
+  const [kpiModalSearch, setKpiModalSearch] = useState('');
+
   const resetRsvpForm = () => {
     setShowAddRsvpForm(false);
     setEditingRsvpId(null);
@@ -1277,12 +1281,24 @@ export default function AdminPage() {
 
           {/* Stats Cards */}
           <div className="stats-grid" style={{ marginBottom: '2rem' }}>
-            <div className="stat-card">
+            <div 
+              className="stat-card kpi-card-clickable" 
+              onClick={() => { setActiveKpiModal('families'); setKpiModalSearch(''); }}
+              title="Haz clic para ver el desglose de familias"
+            >
               <div className="stat-value">{totalFamilies}</div>
               <div className="stat-label">Familias Registradas</div>
               <Users size={18} style={{ color: 'var(--gold-medium)', marginTop: '8px' }} />
+              <div style={{ fontSize: '0.72rem', color: 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Lista ➔
+              </div>
             </div>
-            <div className="stat-card">
+
+            <div 
+              className="stat-card kpi-card-clickable" 
+              onClick={() => { setActiveKpiModal('all_confirmed'); setKpiModalSearch(''); }}
+              title="Haz clic para ver los invitados confirmados"
+            >
               <div className="stat-value">
                 {totalConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {effectiveTotalGuests}</span>
               </div>
@@ -1299,8 +1315,16 @@ export default function AdminPage() {
                   Sin bajas registradas
                 </div>
               )}
+              <div style={{ fontSize: '0.72rem', color: 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Confirmados ➔
+              </div>
             </div>
-            <div className="stat-card">
+
+            <div 
+              className="stat-card kpi-card-clickable" 
+              onClick={() => { setActiveKpiModal('adults_confirmed'); setKpiModalSearch(''); }}
+              title="Haz clic para ver los adultos confirmados"
+            >
               <div className="stat-value">
                 {totalAdultsConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {effectiveTotalAdults}</span>
               </div>
@@ -1317,8 +1341,16 @@ export default function AdminPage() {
                   Sin bajas registradas
                 </div>
               )}
+              <div style={{ fontSize: '0.72rem', color: 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Adultos ➔
+              </div>
             </div>
-            <div className="stat-card">
+
+            <div 
+              className="stat-card kpi-card-clickable" 
+              onClick={() => { setActiveKpiModal('children_confirmed'); setKpiModalSearch(''); }}
+              title="Haz clic para ver los niños confirmados"
+            >
               <div className="stat-value">
                 {totalChildrenConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {effectiveTotalChildren}</span>
               </div>
@@ -1335,8 +1367,17 @@ export default function AdminPage() {
                   Sin bajas registradas
                 </div>
               )}
+              <div style={{ fontSize: '0.72rem', color: 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Niños ➔
+              </div>
             </div>
-            <div className="stat-card" style={{ borderColor: totalDeclined > 0 ? '#fca5a5' : undefined }}>
+
+            <div 
+              className="stat-card kpi-card-clickable" 
+              onClick={() => { setActiveKpiModal('declined'); setKpiModalSearch(''); }}
+              style={{ borderColor: totalDeclined > 0 ? '#fca5a5' : undefined }}
+              title="Haz clic para ver los invitados que no asistirán"
+            >
               <div className="stat-value" style={{ color: totalDeclined > 0 ? '#dc2626' : undefined }}>
                 {totalDeclined} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalGuests}</span>
               </div>
@@ -1345,6 +1386,9 @@ export default function AdminPage() {
                 Descontados del Total
               </div>
               <UserX size={18} style={{ color: totalDeclined > 0 ? '#dc2626' : 'var(--gold-medium)', marginTop: '8px' }} />
+              <div style={{ fontSize: '0.72rem', color: totalDeclined > 0 ? '#dc2626' : 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Bajas ➔
+              </div>
             </div>
           </div>
 
@@ -1912,6 +1956,358 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          {/* KPI Detail Modal */}
+          {activeKpiModal && (() => {
+            let modalTitle = '';
+            let modalSubtitle = '';
+            let modalIcon = <Users size={22} style={{ color: 'var(--gold-dark)' }} />;
+            let modalColor = 'var(--gold-dark)';
+
+            interface ModalGuestRow {
+              id: string;
+              guestName: string;
+              familyName: string;
+              invitedBy?: string;
+              contactPhone?: string;
+              isChild: boolean;
+              statusLabel: string;
+              statusClass: string;
+              comments?: string;
+            }
+
+            let modalGuestRows: ModalGuestRow[] = [];
+            let modalFamilyRows: RSVP[] = [];
+
+            if (activeKpiModal === 'families') {
+              modalTitle = 'Familias Registradas';
+              modalSubtitle = `${sourceFilteredRsvps.length} familias en total`;
+              modalIcon = <Users size={22} style={{ color: 'var(--gold-dark)' }} />;
+              modalFamilyRows = sourceFilteredRsvps.filter(f => {
+                const q = kpiModalSearch.toLowerCase();
+                if (!q) return true;
+                return f.familyName.toLowerCase().includes(q) ||
+                       (f.contactPhone || '').toLowerCase().includes(q) ||
+                       (f.invitedBy || '').toLowerCase().includes(q) ||
+                       f.guests.some(g => g.name.toLowerCase().includes(q));
+              });
+            } else if (activeKpiModal === 'all_confirmed') {
+              modalTitle = 'Total Invitados Confirmados (Asisten)';
+              modalSubtitle = `${totalConfirmed} invitados confirmados de ${effectiveTotalGuests} esperados netos`;
+              modalIcon = <UserCheck size={22} style={{ color: '#16a34a' }} />;
+              modalColor = '#16a34a';
+
+              sourceFilteredRsvps.forEach(rsvp => {
+                rsvp.guests.forEach(g => {
+                  if (g.confirmed === true) {
+                    modalGuestRows.push({
+                      id: `g-${rsvp.id}-${g.id}`,
+                      guestName: g.name,
+                      familyName: rsvp.familyName,
+                      invitedBy: rsvp.invitedBy,
+                      contactPhone: rsvp.contactPhone,
+                      isChild: g.isChild,
+                      statusLabel: 'Asistirá',
+                      statusClass: 'status-confirmed',
+                      comments: rsvp.comments || undefined
+                    });
+                  }
+                });
+              });
+
+              if (kpiModalSearch) {
+                const q = kpiModalSearch.toLowerCase();
+                modalGuestRows = modalGuestRows.filter(r => 
+                  r.guestName.toLowerCase().includes(q) ||
+                  r.familyName.toLowerCase().includes(q) ||
+                  (r.invitedBy || '').toLowerCase().includes(q) ||
+                  (r.contactPhone || '').toLowerCase().includes(q)
+                );
+              }
+            } else if (activeKpiModal === 'adults_confirmed') {
+              modalTitle = 'Adultos Confirmados (Asisten)';
+              modalSubtitle = `${totalAdultsConfirmed} adultos confirmados de ${effectiveTotalAdults} esperados netos`;
+              modalIcon = <Users size={22} style={{ color: 'var(--gold-dark)' }} />;
+
+              sourceFilteredRsvps.forEach(rsvp => {
+                rsvp.guests.forEach(g => {
+                  if (!g.isChild && g.confirmed === true) {
+                    modalGuestRows.push({
+                      id: `g-${rsvp.id}-${g.id}`,
+                      guestName: g.name,
+                      familyName: rsvp.familyName,
+                      invitedBy: rsvp.invitedBy,
+                      contactPhone: rsvp.contactPhone,
+                      isChild: false,
+                      statusLabel: 'Asistirá (Adulto)',
+                      statusClass: 'status-confirmed',
+                      comments: rsvp.comments || undefined
+                    });
+                  }
+                });
+              });
+
+              if (kpiModalSearch) {
+                const q = kpiModalSearch.toLowerCase();
+                modalGuestRows = modalGuestRows.filter(r => 
+                  r.guestName.toLowerCase().includes(q) ||
+                  r.familyName.toLowerCase().includes(q) ||
+                  (r.invitedBy || '').toLowerCase().includes(q)
+                );
+              }
+            } else if (activeKpiModal === 'children_confirmed') {
+              modalTitle = 'Niños Confirmados (Asisten)';
+              modalSubtitle = `${totalChildrenConfirmed} niños confirmados de ${effectiveTotalChildren} esperados netos`;
+              modalIcon = <Baby size={22} style={{ color: '#2563eb' }} />;
+              modalColor = '#2563eb';
+
+              sourceFilteredRsvps.forEach(rsvp => {
+                rsvp.guests.forEach(g => {
+                  if (g.isChild && g.confirmed === true) {
+                    modalGuestRows.push({
+                      id: `g-${rsvp.id}-${g.id}`,
+                      guestName: g.name,
+                      familyName: rsvp.familyName,
+                      invitedBy: rsvp.invitedBy,
+                      contactPhone: rsvp.contactPhone,
+                      isChild: true,
+                      statusLabel: 'Asistirá (Niño)',
+                      statusClass: 'status-confirmed',
+                      comments: rsvp.comments || undefined
+                    });
+                  }
+                });
+              });
+
+              if (kpiModalSearch) {
+                const q = kpiModalSearch.toLowerCase();
+                modalGuestRows = modalGuestRows.filter(r => 
+                  r.guestName.toLowerCase().includes(q) ||
+                  r.familyName.toLowerCase().includes(q) ||
+                  (r.invitedBy || '').toLowerCase().includes(q)
+                );
+              }
+            } else if (activeKpiModal === 'declined') {
+              modalTitle = 'Invitados que No Asistirán (Bajas)';
+              modalSubtitle = `${totalDeclined} personas declinadas descontadas del total (${totalGuests} originales)`;
+              modalIcon = <UserX size={22} style={{ color: '#dc2626' }} />;
+              modalColor = '#dc2626';
+
+              sourceFilteredRsvps.forEach(rsvp => {
+                rsvp.guests.forEach(g => {
+                  if (g.confirmed === false) {
+                    modalGuestRows.push({
+                      id: `g-${rsvp.id}-${g.id}`,
+                      guestName: g.name,
+                      familyName: rsvp.familyName,
+                      invitedBy: rsvp.invitedBy,
+                      contactPhone: rsvp.contactPhone,
+                      isChild: g.isChild,
+                      statusLabel: 'No asistirá',
+                      statusClass: 'status-declined',
+                      comments: rsvp.comments || undefined
+                    });
+                  }
+                });
+              });
+
+              if (kpiModalSearch) {
+                const q = kpiModalSearch.toLowerCase();
+                modalGuestRows = modalGuestRows.filter(r => 
+                  r.guestName.toLowerCase().includes(q) ||
+                  r.familyName.toLowerCase().includes(q) ||
+                  (r.invitedBy || '').toLowerCase().includes(q)
+                );
+              }
+            }
+
+            return (
+              <div 
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 1000,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1rem'
+                }}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setActiveKpiModal(null);
+                }}
+              >
+                <div 
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '20px',
+                    width: '100%',
+                    maxWidth: '680px',
+                    maxHeight: '85vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(212, 175, 55, 0.3)'
+                  }}
+                >
+                  {/* Modal Header */}
+                  <div style={{ padding: '1.4rem 1.8rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(to right, #faf8f5, #ffffff)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(212, 175, 55, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {modalIcon}
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: '1.3rem', color: modalColor, margin: 0, fontWeight: 600 }}>
+                          {modalTitle}
+                        </h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+                          {modalSubtitle}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setActiveKpiModal(null)} 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Cerrar modal"
+                    >
+                      <X size={22} />
+                    </button>
+                  </div>
+
+                  {/* Search filter inside modal */}
+                  <div style={{ padding: '0.8rem 1.8rem', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc' }}>
+                    <div className="search-wrapper" style={{ margin: 0, maxWidth: '100%' }}>
+                      <Search className="search-icon" size={16} />
+                      <input
+                        type="text"
+                        className="rsvp-input search-input"
+                        placeholder="Filtrar datos en esta lista..."
+                        value={kpiModalSearch}
+                        onChange={(e) => setKpiModalSearch(e.target.value)}
+                        style={{ width: '100%', fontSize: '0.85rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div style={{ padding: '1.2rem 1.8rem', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {activeKpiModal === 'families' ? (
+                      modalFamilyRows.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                          <Users size={36} style={{ margin: '0 auto 0.8rem auto', opacity: 0.4 }} />
+                          <p style={{ margin: 0 }}>No se encontraron familias que coincidan con la búsqueda.</p>
+                        </div>
+                      ) : (
+                        modalFamilyRows.map((rsvp) => {
+                          const status = getFamilyRsvpStatus(rsvp);
+                          const confirmedCount = rsvp.guests.filter(g => g.confirmed === true).length;
+                          const totalG = rsvp.guests.length;
+                          return (
+                            <div key={rsvp.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.2rem', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-dark)' }}>
+                                    {rsvp.familyName}
+                                  </div>
+                                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    Invitados por: <span style={{ fontWeight: 500, color: 'var(--gold-dark)' }}>{formatInvitedByLabel(rsvp.invitedBy)}</span>
+                                    {rsvp.contactPhone && (
+                                      <span style={{ marginLeft: '10px' }}>· Tel: {rsvp.contactPhone}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className={`status-badge ${status.className}`} style={{ fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}>
+                                  {status.label} ({confirmedCount}/{totalG})
+                                </span>
+                              </div>
+
+                              {/* Guest list pills */}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px dashed #f1f5f9' }}>
+                                {rsvp.guests.map(g => (
+                                  <span 
+                                    key={g.id} 
+                                    style={{ 
+                                      fontSize: '0.75rem', 
+                                      padding: '3px 8px', 
+                                      borderRadius: '6px', 
+                                      backgroundColor: g.confirmed === true ? '#f0fdf4' : g.confirmed === false ? '#fef2f2' : '#f8fafc',
+                                      color: g.confirmed === true ? '#15803d' : g.confirmed === false ? '#b91c1c' : '#64748b',
+                                      border: `1px solid ${g.confirmed === true ? '#bbf7d0' : g.confirmed === false ? '#fecaca' : '#e2e8f0'}`,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    {g.name}
+                                    {g.isChild && <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600, backgroundColor: '#eff6ff', padding: '1px 4px', borderRadius: '4px' }}>Niño</span>}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
+                    ) : (
+                      modalGuestRows.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                          <Users size={36} style={{ margin: '0 auto 0.8rem auto', opacity: 0.4 }} />
+                          <p style={{ margin: 0 }}>No se encontraron personas en este reporte.</p>
+                        </div>
+                      ) : (
+                        modalGuestRows.map((row, idx) => (
+                          <div key={row.id || idx} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.8rem 1.1rem', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ flexGrow: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontWeight: 600, fontSize: '0.98rem', color: 'var(--text-dark)' }}>{row.guestName}</span>
+                                {row.isChild ? (
+                                  <span style={{ fontSize: '0.68rem', color: '#2563eb', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '1px 6px', borderRadius: '12px', fontWeight: 600 }}>Niño</span>
+                                ) : (
+                                  <span style={{ fontSize: '0.68rem', color: '#475569', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '12px', fontWeight: 500 }}>Adulto</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                                Familia: <strong style={{ color: 'var(--text-dark)' }}>{row.familyName}</strong> · Lado: {formatInvitedByLabel(row.invitedBy || '')}
+                                {row.contactPhone && <span style={{ marginLeft: '8px' }}>· Tel: {row.contactPhone}</span>}
+                              </div>
+                              {row.comments && (
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>
+                                  "{row.comments}"
+                                </div>
+                              )}
+                            </div>
+                            <span className={`status-badge ${row.statusClass}`} style={{ fontSize: '0.72rem', padding: '0.25rem 0.65rem', flexShrink: 0 }}>
+                              {row.statusLabel}
+                            </span>
+                          </div>
+                        ))
+                      )
+                    )}
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div style={{ padding: '1rem 1.8rem', borderTop: '1px solid #f1f5f9', backgroundColor: '#faf8f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                      {activeKpiModal === 'families' 
+                        ? `Mostrando ${modalFamilyRows.length} familias`
+                        : `Mostrando ${modalGuestRows.length} invitados`}
+                    </div>
+                    <button 
+                      onClick={() => setActiveKpiModal(null)} 
+                      className="btn-outline" 
+                      style={{ padding: '0.4rem 1.2rem', fontSize: '0.82rem' }}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
       )}
 

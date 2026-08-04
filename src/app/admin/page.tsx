@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera } from 'lucide-react';
+import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera, UserX } from 'lucide-react';
 import Link from 'next/link';
 import DateField from '@/components/DateField';
 import SeatingPlanner from '@/components/SeatingPlanner';
@@ -1025,8 +1025,12 @@ export default function AdminPage() {
   const totalFamilies = sourceFilteredRsvps.length;
   let totalGuests = 0;
   let totalConfirmed = 0;
+  let totalDeclined = 0;
+  let totalPending = 0;
   let totalAdultsConfirmed = 0;
   let totalChildrenConfirmed = 0;
+  let totalAdultsDeclined = 0;
+  let totalChildrenDeclined = 0;
   let totalAdults = 0;
   let totalChildren = 0;
 
@@ -1045,9 +1049,22 @@ export default function AdminPage() {
         } else {
           totalAdultsConfirmed++;
         }
+      } else if (guest.confirmed === false) {
+        totalDeclined++;
+        if (guest.isChild) {
+          totalChildrenDeclined++;
+        } else {
+          totalAdultsDeclined++;
+        }
+      } else {
+        totalPending++;
       }
     });
   });
+
+  const effectiveTotalGuests = totalGuests - totalDeclined;
+  const effectiveTotalAdults = totalAdults - totalAdultsDeclined;
+  const effectiveTotalChildren = totalChildren - totalChildrenDeclined;
 
   const filteredRsvps = sourceFilteredRsvps.filter(rsvp => {
     const searchLower = rsvpSearchTerm.toLowerCase();
@@ -1266,19 +1283,68 @@ export default function AdminPage() {
               <Users size={18} style={{ color: 'var(--gold-medium)', marginTop: '8px' }} />
             </div>
             <div className="stat-card">
-              <div className="stat-value">{totalConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalGuests}</span></div>
+              <div className="stat-value">
+                {totalConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {effectiveTotalGuests}</span>
+              </div>
               <div className="stat-label">Total Invitados (Asisten)</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados / Totales</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Confirmados / Totales Netos
+              </div>
+              {totalDeclined > 0 ? (
+                <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', fontWeight: 600 }}>
+                  -{totalDeclined} no asistirán (Orig. {totalGuests})
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Sin bajas registradas
+                </div>
+              )}
             </div>
             <div className="stat-card">
-              <div className="stat-value">{totalAdultsConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalAdults}</span></div>
+              <div className="stat-value">
+                {totalAdultsConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {effectiveTotalAdults}</span>
+              </div>
               <div className="stat-label">Adultos (Asisten)</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados / Totales</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Confirmados / Totales Netos
+              </div>
+              {totalAdultsDeclined > 0 ? (
+                <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', fontWeight: 600 }}>
+                  -{totalAdultsDeclined} no asistirán (Orig. {totalAdults})
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Sin bajas registradas
+                </div>
+              )}
             </div>
             <div className="stat-card">
-              <div className="stat-value">{totalChildrenConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalChildren}</span></div>
+              <div className="stat-value">
+                {totalChildrenConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {effectiveTotalChildren}</span>
+              </div>
               <div className="stat-label">Niños (Asisten)</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Confirmados / Totales</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Confirmados / Totales Netos
+              </div>
+              {totalChildrenDeclined > 0 ? (
+                <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', fontWeight: 600 }}>
+                  -{totalChildrenDeclined} no asistirán (Orig. {totalChildren})
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Sin bajas registradas
+                </div>
+              )}
+            </div>
+            <div className="stat-card" style={{ borderColor: totalDeclined > 0 ? '#fca5a5' : undefined }}>
+              <div className="stat-value" style={{ color: totalDeclined > 0 ? '#dc2626' : undefined }}>
+                {totalDeclined} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalGuests}</span>
+              </div>
+              <div className="stat-label">No Asistirán</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Descontados del Total
+              </div>
+              <UserX size={18} style={{ color: totalDeclined > 0 ? '#dc2626' : 'var(--gold-medium)', marginTop: '8px' }} />
             </div>
           </div>
 

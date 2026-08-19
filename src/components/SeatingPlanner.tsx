@@ -1,5 +1,27 @@
 'use client';
 
+/*
+ * DIRECTION CONTRACT (impeccable surface round, seed 339b7a84)
+ * THESIS: one side at a time, then the whole room — the guided stepper the
+ *   organizer chose over a free-form room, so the seating task is never more
+ *   than one decision at once, without ever forbidding a mixed table.
+ * OWN-WORLD: inherited from /admin's now-unified slate/near-black system
+ *   (bg-white cards, #e2e8f0 borders, #0f172a primary text) — not the boutique
+ *   gold/serif this component used before. Mamá #B5546F / Papá #33567D stay
+ *   fixed, a confirmed brand commitment.
+ * STORY: the organizer opens Mamá's step, seats her families, moves to Papá,
+ *   then lands on Revisión — every table, both sides, at a glance — to catch
+ *   overflow and finish mixed-table adjustments free-form.
+ * FIRST VIEWPORT: summary bar, then a three-segment stepper (Mamá · Papá ·
+ *   Revisión) carrying live seated/total counts per segment; below it, the
+ *   active step's unassigned tray and table grid, filtered to that side.
+ * FORM: surface-scope structural roll, dealt indices 4/1/7; index 4 ("Lista
+ *   de Mesas") led. The user chose index 7, "Asistente Paso a Paso", over
+ *   the dealt lead.
+ * FINISH: unreviewed and undocumented is unfinished; this build ends with
+ *   the finish review, the verdict, and DESIGN.md.
+ */
+
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   DndContext,
@@ -377,8 +399,8 @@ function UnassignedTray({ families, onSelectFamily }: { families: Family[]; onSe
       ref={setNodeRef}
       className="seat-tray"
       style={{
-        background: isOver ? 'rgba(212,175,55,0.08)' : undefined,
-        borderColor: isOver ? 'var(--gold-medium)' : undefined,
+        background: isOver ? '#f1f5f9' : undefined,
+        borderColor: isOver ? '#0f172a' : undefined,
       }}
     >
       <div className="seat-tray-title">
@@ -464,12 +486,100 @@ function SideSection({
   );
 }
 
+// ---------- Revisión: todas las mesas de ambos lados, sin dividir en columnas ----------
+function AllTablesGrid({
+  tables,
+  familiesByTable,
+  onDeleteTable,
+  onRenameTable,
+  onSelectTable,
+  onSelectFamily,
+}: {
+  tables: TableRow[];
+  familiesByTable: Map<number, Family[]>;
+  onDeleteTable: (id: number) => void;
+  onRenameTable: (id: number, name: string) => void;
+  onSelectTable: (t: TableRow) => void;
+  onSelectFamily: (f: Family) => void;
+}) {
+  const sorted = useMemo(
+    () => [...tables].sort((a, b) => (a.side === b.side ? a.position - b.position : a.side === 'MAMA' ? -1 : 1)),
+    [tables]
+  );
+
+  if (sorted.length === 0) {
+    return <p className="seat-tray-empty" style={{ padding: '1.5rem 0' }}>Todavía no hay mesas creadas.</p>;
+  }
+
+  return (
+    <div className="seat-side-tables seat-all-tables">
+      {sorted.map((t) => (
+        <TableCard
+          key={t.id}
+          table={t}
+          families={familiesByTable.get(t.id) || []}
+          onDelete={onDeleteTable}
+          onRename={onRenameTable}
+          onSelectTable={onSelectTable}
+          onSelectFamily={onSelectFamily}
+        />
+      ))}
+    </div>
+  );
+}
+
+type Step = 'MAMA' | 'PAPA' | 'REVISION';
+const STEP_ORDER: Step[] = ['MAMA', 'PAPA', 'REVISION'];
+const STEP_LABEL: Record<Step, string> = { MAMA: 'Mamá', PAPA: 'Papá', REVISION: 'Revisión' };
+
+function Stepper({
+  active,
+  onChange,
+  countsBySide,
+}: {
+  active: Step;
+  onChange: (s: Step) => void;
+  countsBySide: Record<Side, { seated: number; total: number }>;
+}) {
+  return (
+    <div className="seat-stepper" role="tablist" aria-label="Pasos del acomodo">
+      {STEP_ORDER.map((step) => {
+        const isActive = step === active;
+        const color = step === 'MAMA' ? SIDE_COLOR.MAMA : step === 'PAPA' ? SIDE_COLOR.PAPA : '#0f172a';
+        const count = step !== 'REVISION' ? countsBySide[step] : null;
+        return (
+          <button
+            key={step}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            className={`seat-step${isActive ? ' is-active' : ''}`}
+            style={isActive ? { borderColor: color, color } : undefined}
+            onClick={() => onChange(step)}
+          >
+            {step !== 'REVISION' && (
+              <span className="seat-side-dot" style={{ background: color }} aria-hidden />
+            )}
+            <span className="seat-step-label">{STEP_LABEL[step]}</span>
+            {count && (
+              <span className="seat-step-count">
+                {count.seated}/{count.total}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerProps) {
   const [families, setFamilies] = useState<Family[]>([]);
   const [tables, setTables] = useState<TableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [step, setStep] = useState<Step>('MAMA');
 
   // Estados para modales en móvil
   const [mobileFamilySelect, setMobileFamilySelect] = useState<Family | null>(null);
@@ -529,6 +639,26 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     () => families.filter((f) => f.tableId != null).reduce((s, f) => s + headcount(f), 0),
     [families]
   );
+
+  // Conteo por lado para el contador vivo del stepper.
+  const countsBySide = useMemo(() => {
+    const build = (side: Side) => {
+      const seats = tablesBySide[side].reduce((s, t) => s + t.seats, 0);
+      const seated = tablesBySide[side].reduce(
+        (s, t) => s + (familiesByTable.get(t.id)?.reduce((a, f) => a + headcount(f), 0) || 0),
+        0
+      );
+      return { seated, total: seats };
+    };
+    return { MAMA: build('MAMA'), PAPA: build('PAPA') };
+  }, [tablesBySide, familiesByTable]);
+
+  // En los pasos Mamá/Papá, la bandeja de "sin asignar" solo muestra
+  // familias de ese lado (o sin lado todavía) — el paso Revisión ve todas.
+  const unassignedForStep = useMemo(() => {
+    if (step === 'REVISION') return unassigned;
+    return unassigned.filter((f) => f.side == null || f.side === step);
+  }, [unassigned, step]);
 
   // --- API helpers ---
   async function assign(rsvpId: number, tableId: number | null) {
@@ -615,13 +745,8 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
         const table = tables.find((t) => t.id === tableId);
         if (!table) return;
 
-        // Aviso si la familia estaba etiquetada del otro lado.
-        if (family.side && family.side !== table.side) {
-          const ok = window.confirm(
-            `"${family.familyName}" está en lado ${SIDE_LABEL[family.side]}. Se moverá al lado ${SIDE_LABEL[table.side]}. ¿Continuar?`
-          );
-          if (!ok) return;
-        }
+        // Mezclar familias de ambos lados en una misma mesa es normal y
+        // aceptado — no se advierte ni se bloquea, solo se asigna.
         await assign(rsvpId, tableId);
       }
     } catch (err) {
@@ -647,7 +772,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
         {/* Summary */}
         <div className="seat-summary">
           <div className="seat-summary-info">
-            <strong>{eventName || 'Acomodo de mesas'}</strong>
+            <strong>{eventName || 'Resumen del salón'}</strong>
             <span className="seat-summary-sub">
               {families.length} familias · {seatedGuests}/{totalGuests} personas sentadas ({pct}%) · {tables.length}{' '}
               {tables.length === 1 ? 'mesa' : 'mesas'}
@@ -683,31 +808,33 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
           </div>
         )}
 
-        {/* Unassigned tray */}
-        <UnassignedTray families={unassigned} onSelectFamily={setMobileFamilySelect} />
+        {/* Paso a paso: Mamá → Papá → Revisión, siempre navegable libremente */}
+        <Stepper active={step} onChange={setStep} countsBySide={countsBySide} />
 
-        {/* Sides */}
-        <div className="seat-sides">
-          <SideSection
-            side="MAMA"
-            tables={tablesBySide.MAMA}
-            familiesByTable={familiesByTable}
-            onAddTable={addTable}
-            onDeleteTable={deleteTable}
-            onRenameTable={renameTable}
-            onSelectTable={setMobileTableSelect}
-            onSelectFamily={setMobileFamilySelect}
-          />
-          <SideSection
-            side="PAPA"
-            tables={tablesBySide.PAPA}
-            familiesByTable={familiesByTable}
-            onAddTable={addTable}
-            onDeleteTable={deleteTable}
-            onRenameTable={renameTable}
-            onSelectTable={setMobileTableSelect}
-            onSelectFamily={setMobileFamilySelect}
-          />
+        <div key={step} className="seat-step-content animate-in fade-in slide-in-from-right-2 duration-200">
+          <UnassignedTray families={unassignedForStep} onSelectFamily={setMobileFamilySelect} />
+
+          {step === 'REVISION' ? (
+            <AllTablesGrid
+              tables={tables}
+              familiesByTable={familiesByTable}
+              onDeleteTable={deleteTable}
+              onRenameTable={renameTable}
+              onSelectTable={setMobileTableSelect}
+              onSelectFamily={setMobileFamilySelect}
+            />
+          ) : (
+            <SideSection
+              side={step}
+              tables={tablesBySide[step]}
+              familiesByTable={familiesByTable}
+              onAddTable={addTable}
+              onDeleteTable={deleteTable}
+              onRenameTable={renameTable}
+              onSelectTable={setMobileTableSelect}
+              onSelectFamily={setMobileFamilySelect}
+            />
+          )}
         </div>
       </div>
 
@@ -716,7 +843,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 transition-opacity sm:items-center animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-8">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-[1.3rem] text-gold-dark font-serif font-medium">Asignar mesa</h3>
+              <h3 className="text-[1.3rem] text-slate-900 font-semibold">Asignar mesa</h3>
               <button onClick={() => setMobileFamilySelect(null)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600"><X size={22} /></button>
             </div>
             <p className="text-sm text-gray-500 mb-6">Selecciona el destino para mover a la <strong>{mobileFamilySelect.familyName}</strong> ({headcount(mobileFamilySelect)} pax).</p>
@@ -724,10 +851,10 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => { assign(mobileFamilySelect.id, null); setMobileFamilySelect(null); }}
-                className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-gold-medium transition-colors flex items-center justify-between bg-gray-50"
+                className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-slate-400 transition-colors flex items-center justify-between bg-gray-50"
               >
                 <span className="font-medium text-gray-700">Sin asignar (Remover de la mesa)</span>
-                {mobileFamilySelect.tableId == null && <CheckCircle2 size={20} className="text-gold-dark" />}
+                {mobileFamilySelect.tableId == null && <CheckCircle2 size={20} className="text-slate-900" />}
               </button>
               
               {tables.map(t => {
@@ -737,7 +864,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                   <button 
                     key={t.id}
                     onClick={() => { assign(mobileFamilySelect.id, t.id); setMobileFamilySelect(null); }}
-                    className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-gold-medium hover:bg-gold-medium/5 transition-colors flex items-center justify-between"
+                    className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-slate-400 hover:bg-slate-50 transition-colors flex items-center justify-between"
                   >
                     <div>
                       <div className="font-semibold text-gray-800 text-[1.05rem] mb-1">{t.name}</div>
@@ -745,7 +872,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                         Lado {SIDE_LABEL[t.side]} • {currentOcc}/{t.seats} ocupados
                       </div>
                     </div>
-                    {isCurrent && <CheckCircle2 size={20} className="text-gold-dark" />}
+                    {isCurrent && <CheckCircle2 size={20} className="text-slate-900" />}
                   </button>
                 )
               })}
@@ -760,7 +887,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
           <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-8">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="text-[1.5rem] text-gold-dark font-serif font-medium leading-none mb-2">{mobileTableSelect.name}</h3>
+                <h3 className="text-[1.5rem] text-slate-900 font-semibold leading-none mb-2">{mobileTableSelect.name}</h3>
                 <span className="text-[0.75rem] uppercase tracking-widest text-gray-500 bg-gray-100 px-2 py-1 rounded">Lado {SIDE_LABEL[mobileTableSelect.side]}</span>
               </div>
               <button onClick={() => setMobileTableSelect(null)} className="p-2 -mr-2 -mt-2 text-gray-400 hover:text-gray-600"><X size={24} /></button>
@@ -776,10 +903,11 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                   <div key={fam.id} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex justify-between items-center gap-4">
                     <div className="flex-1">
                       <div className="font-semibold text-gray-800 text-[1rem] mb-2">{fam.familyName}</div>
-                      <div className="text-[0.85rem] text-gray-600 flex flex-col gap-1.5 pl-3 border-l-[3px] border-gold-medium/40">
+                      <div className="text-[0.85rem] text-gray-600 flex flex-col gap-1.5">
                         {fam.guests.map(g => (
                           <span key={g.id} className="flex items-center gap-2">
-                            {g.name} 
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" aria-hidden />
+                            {g.name}
                             {g.isChild && <span className="bg-blue-50 text-blue-600 text-[0.6rem] uppercase px-1.5 py-0.5 rounded-full font-bold">👶 Niño</span>}
                           </span>
                         ))}
@@ -787,7 +915,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                     </div>
                     <button 
                       onClick={() => { setMobileTableSelect(null); setMobileFamilySelect(fam); }}
-                      className="shrink-0 text-gold-dark bg-gold-medium/10 p-3 rounded-full hover:bg-gold-medium/20 transition-colors"
+                      className="shrink-0 text-slate-900 bg-slate-100 p-3 rounded-full hover:bg-slate-200 transition-colors"
                       title="Mover de mesa"
                     >
                       <RefreshCw size={16} />

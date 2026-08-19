@@ -10,7 +10,7 @@ export default async function MesasPage({ params }: { params: Promise<{ eventId:
   if (isNaN(eventId)) {
     return (
       <div className="admin-container" style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-        <h2 style={{ color: 'var(--gold-dark)' }}>Error: ID de evento inválido</h2>
+        <h2 style={{ color: '#0f172a', fontFamily: 'var(--font-sans)' }}>Error: ID de evento inválido</h2>
         <Link href="/admin" className="btn-outline" style={{ marginTop: '1rem', display: 'inline-flex' }}>Volver</Link>
       </div>
     );
@@ -18,13 +18,10 @@ export default async function MesasPage({ params }: { params: Promise<{ eventId:
 
   return (
     <div className="admin-container" style={{ minHeight: '100vh', padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <span className="guest-type-tag">Acomodo de Mesas</span>
-          <h2 style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', margin: 0 }}>
-            Organización del Evento #{eventId}
-          </h2>
-        </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0, fontFamily: 'var(--font-sans)' }}>
+          Acomodo de mesas — Evento #{eventId}
+        </h2>
         <Link href="/admin" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1.2rem', textDecoration: 'none' }}>
           <ChevronLeft size={16} />
           Volver a Administración

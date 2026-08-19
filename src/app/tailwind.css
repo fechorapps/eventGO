@@ -3479,21 +3479,21 @@ select:focus-visible,
 /* ==========================================================================
    Seating planner (acomodo de mesas)
    ========================================================================== */
-.seat-planner { text-align: left; }
+.seat-planner { text-align: left; font-family: var(--font-sans); }
 
 .seat-summary {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
   flex-wrap: wrap; margin-bottom: 1rem;
 }
 .seat-summary-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.seat-summary strong { color: var(--color-gold-dark); font-size: 1.05rem; display: block; }
+.seat-summary strong { color: #0f172a; font-size: 1.05rem; display: block; }
 .seat-summary-sub { color: var(--color-text-muted); font-size: 0.8rem; }
 .seat-progress {
   height: 6px; width: 100%; max-width: 340px; border-radius: 999px;
   background: rgba(0,0,0,0.08); overflow: hidden; margin-top: 2px;
 }
 .seat-progress-fill {
-  height: 100%; border-radius: 999px; background: var(--color-gold-medium);
+  height: 100%; border-radius: 999px; background: #0f172a;
   transition: width 0.3s ease;
 }
 
@@ -3503,17 +3503,36 @@ select:focus-visible,
   padding: 0.6rem 0.9rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem;
 }
 
+/* Stepper: Mamá → Papá → Revisión, siempre navegable libremente */
+.seat-stepper {
+  display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+}
+.seat-step {
+  display: flex; align-items: center; gap: 7px;
+  background: #fff; border: 1.5px solid #e2e8f0; border-radius: 999px;
+  padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; color: #64748b;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.seat-step:hover { border-color: #cbd5e1; background: #f8fafc; }
+.seat-step.is-active { background: #fff; font-weight: 700; }
+.seat-step-count {
+  font-size: 0.72rem; font-weight: 700; color: #94a3b8;
+  background: #f1f5f9; border-radius: 999px; padding: 1px 8px;
+}
+.seat-step.is-active .seat-step-count { color: inherit; opacity: 0.75; }
+.seat-step-content { min-width: 0; }
+
 .seat-tray {
-  border: 1px dashed rgba(212,175,55,0.4); border-radius: 14px;
-  padding: 1rem; margin-bottom: 1.5rem; background: rgba(212,175,55,0.02);
+  border: 1px dashed #cbd5e1; border-radius: 14px;
+  padding: 1rem; margin-bottom: 1.5rem; background: #f8fafc;
   transition: background 0.2s, border-color 0.2s;
 }
 .seat-tray-title {
   display: flex; align-items: center; gap: 8px; font-weight: 600;
-  color: var(--color-gold-dark); margin-bottom: 0.8rem; font-size: 0.95rem;
+  color: #0f172a; margin-bottom: 0.8rem; font-size: 0.95rem;
 }
 .seat-tray-count {
-  background: rgba(212,175,55,0.15); color: var(--color-gold-dark);
+  background: #e2e8f0; color: #0f172a;
   border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; font-weight: 700;
 }
 .seat-tray-empty {
@@ -3568,7 +3587,7 @@ select:focus-visible,
 }
 .seat-side-title {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--font-serif), serif; font-size: 1.15rem; font-weight: 700;
+  font-family: var(--font-sans); font-size: 1.05rem; font-weight: 700;
 }
 .seat-side-total { font-size: 0.75rem; color: var(--color-text-muted); }
 .seat-side-tables {
@@ -3597,15 +3616,15 @@ select:focus-visible,
 .seat-table-delete:hover { background: #fdecec; color: #B22222; }
 .seat-table-name {
   background: none; border: none; cursor: pointer;
-  font-family: var(--font-serif), serif; font-weight: 700; font-size: 1rem;
+  font-family: var(--font-sans); font-weight: 700; font-size: 0.92rem;
   color: var(--color-text-dark); display: inline-flex; align-items: center; gap: 5px;
   border-radius: 6px; padding: 1px 6px; max-width: 100%;
 }
 .seat-table-name:hover { background: rgba(0,0,0,0.04); }
 .seat-table-name-input {
-  font-family: var(--font-serif), serif; font-weight: 700; font-size: 1rem;
+  font-family: var(--font-sans); font-weight: 700; font-size: 0.92rem;
   color: var(--color-text-dark); text-align: center; width: 90%;
-  border: 1px solid var(--color-gold-medium); border-radius: 6px; padding: 1px 6px;
+  border: 1px solid #0f172a; border-radius: 6px; padding: 1px 6px;
   background: #fff; outline: none;
 }
 .seat-over-chip {

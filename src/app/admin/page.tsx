@@ -7,100 +7,15 @@ import Pagination from '@/components/Pagination';
 import { paginateData } from '@/types/pagination';
 import { MEAL_ADULT, MEAL_CHILD, MEAL_EMOJI, MEAL_SHORT_LABEL, MealType, isMealMismatch, normalizeMealType } from '@/lib/meal';
 import { useSelectedEventSlug } from '@/components/admin/selected-event-context';
-
-interface Guest {
-  id: number;
-  name: string;
-  isChild: boolean;
-  mealType: MealType;
-  confirmed: boolean | null;
-}
-
-interface RSVP {
-  id: number;
-  slug: string;
-  familyName: string;
-  invitedBy: string;
-  invitationSent: boolean;
-  contactPhone: string;
-  comments: string;
-  createdAt: string;
-  guests: Guest[];
-}
-
-type RSVPFilter = 'all' | 'confirmed' | 'pending' | 'declined';
-type RSVPInvitedByFilter = 'all' | 'papa' | 'mama' | 'bebes';
-
-interface EventItineraryItem {
-  id: number;
-  time: string;
-  activity: string;
-}
-
-interface EventPhoto {
-  id: number;
-  url: string;
-}
-
-interface EventGiftRegistry {
-  id: number;
-  storeName: string;
-  registryNumber: string | null;
-  url: string | null;
-}
-
-interface Event {
-  id: number;
-  slug: string;
-  title: string;
-  celebrantName: string;
-  subtitle: string | null;
-  quote: string | null;
-  date: string;
-  heroBackgroundUrl: string | null;
-  detailsBackgroundUrl: string | null;
-  rsvpBackgroundUrl: string | null;
-  parents: string | null;
-  godparents: string | null;
-  churchName: string | null;
-  churchTime: string | null;
-  churchAddress: string | null;
-  churchMapsUrl: string | null;
-  hallName: string | null;
-  hallTime: string | null;
-  hallAddress: string | null;
-  hallMapsUrl: string | null;
-  locationsAreSame: boolean;
-  dressCode: string | null;
-  itinerary: EventItineraryItem[];
-  photos: EventPhoto[];
-  giftRegistries: EventGiftRegistry[];
-  giftEnvelope: boolean;
-  giftBankName: string | null;
-  giftBankOwner: string | null;
-  giftBankAccount: string | null;
-  giftBankClabe: string | null;
-  rsvpPhone: string | null;
-  rsvpDeadline: string | null;
-}
-
-interface GuestInput {
-  name: string;
-  isChild: boolean;
-  mealType: MealType;
-  confirmed: boolean | null;
-}
-
-interface TempItineraryInput {
-  time: string;
-  activity: string;
-}
-
-interface TempRegistryInput {
-  storeName: string;
-  registryNumber: string;
-  url: string;
-}
+import type {
+  RSVP,
+  RSVPFilter,
+  RSVPInvitedByFilter,
+  Event,
+  GuestInput,
+  TempItineraryInput,
+  TempRegistryInput,
+} from '@/types/admin';
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // null checking

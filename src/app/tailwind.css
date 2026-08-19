@@ -877,6 +877,15 @@ h1, h2, h3, h4 {
   animation: select-card-pulse 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+/* Used by RefreshCw's `animation: spin ...` inline style wherever a loading
+   spinner icon rotates (SeatingPlanner, admin panel). Defined explicitly
+   here rather than relying on Tailwind's `animate-spin` utility (used
+   elsewhere in the app) to also emit this keyframe as a side effect. */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 @keyframes pop-in-indicator {
   0% { transform: scale(0.85); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }

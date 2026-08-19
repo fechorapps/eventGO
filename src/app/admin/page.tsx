@@ -1,14 +1,16 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera, UserX } from 'lucide-react';
+import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera, UserX, Utensils } from 'lucide-react';
 import Link from 'next/link';
 import DateField from '@/components/DateField';
 import SeatingPlanner from '@/components/SeatingPlanner';
+import { MEAL_ADULT, MEAL_CHILD, MEAL_EMOJI, MEAL_SHORT_LABEL, MealType, isMealMismatch, normalizeMealType } from '@/lib/meal';
 
 interface Guest {
   id: number;
   name: string;
   isChild: boolean;
+  mealType: MealType;
   confirmed: boolean | null;
 }
 
@@ -83,6 +85,7 @@ interface Event {
 interface GuestInput {
   name: string;
   isChild: boolean;
+  mealType: MealType;
   confirmed: boolean | null;
 }
 
@@ -251,13 +254,14 @@ export default function AdminPage() {
   const [newGuestsList, setNewGuestsList] = useState<GuestInput[]>([]);
   const [tempGuestName, setTempGuestName] = useState('');
   const [tempGuestType, setTempGuestType] = useState<'adult' | 'child'>('adult');
+  const [tempGuestMeal, setTempGuestMeal] = useState<MealType>(MEAL_ADULT);
   // Removed tempGuestConfirmed since manual additions default to pending (false)
   const [rsvpActionLoadingId, setRsvpActionLoadingId] = useState<number | null>(null);
   const [rsvpAddError, setRsvpAddError] = useState('');
   const [rsvpAddLoading, setRsvpAddLoading] = useState(false);
 
   // KPI Detail Modal states
-  const [activeKpiModal, setActiveKpiModal] = useState<'families' | 'all_confirmed' | 'adults_confirmed' | 'children_confirmed' | 'declined' | null>(null);
+  const [activeKpiModal, setActiveKpiModal] = useState<'families' | 'all_confirmed' | 'adults_confirmed' | 'children_confirmed' | 'declined' | 'adult_meals' | 'child_meals' | null>(null);
   const [kpiModalSearch, setKpiModalSearch] = useState('');
 
   const resetRsvpForm = () => {
@@ -271,6 +275,7 @@ export default function AdminPage() {
     setNewGuestsList([]);
     setTempGuestName('');
     setTempGuestType('adult');
+    setTempGuestMeal(MEAL_ADULT);
     setRsvpAddError('');
   };
 
@@ -388,6 +393,31 @@ export default function AdminPage() {
 
     return () => window.clearInterval(intervalId);
   }, [viewMode, selectedEvent?.id]);
+
+  // Con los formularios en modal hace falta cerrarlos con Escape y evitar que
+  // la página de atrás siga haciendo scroll mientras están abiertos.
+  useEffect(() => {
+    const anyModalOpen = showAddRsvpForm || activeKpiModal !== null;
+    if (!anyModalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (showAddRsvpForm) {
+        resetRsvpForm();
+      } else {
+        setActiveKpiModal(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAddRsvpForm, activeKpiModal]);
 
   const getFamilyRsvpStatus = (rsvp: RSVP) => {
     const totalGuests = rsvp.guests.length;
@@ -509,11 +539,13 @@ export default function AdminPage() {
       rsvp.guests.map((guest) => ({
         name: guest.name,
         isChild: guest.isChild,
+        mealType: normalizeMealType(guest.mealType, guest.isChild),
         confirmed: guest.confirmed,
       }))
     );
     setTempGuestName('');
     setTempGuestType('adult');
+    setTempGuestMeal(MEAL_ADULT);
     setRsvpAddError('');
     setShowAddRsvpForm(true);
   };
@@ -596,6 +628,47 @@ export default function AdminPage() {
     }
   };
 
+  // El platillo se cambia sin abrir el formulario: es el dato que la cocina
+  // ajusta a último momento (adultos que piden platillo de niño y viceversa).
+  const handleToggleGuestMeal = async (rsvpId: number, guestId: number, currentMeal: MealType) => {
+    const nextMeal: MealType = currentMeal === MEAL_CHILD ? MEAL_ADULT : MEAL_CHILD;
+
+    try {
+      const response = await fetch('/api/admin/rsvps', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          guestId,
+          mealType: nextMeal,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'No fue posible actualizar el platillo del invitado.');
+      }
+
+      setRsvps((currentRsvps) =>
+        currentRsvps.map((rsvp) => {
+          if (rsvp.id === rsvpId) {
+            return {
+              ...rsvp,
+              guests: rsvp.guests.map((g) =>
+                g.id === guestId ? { ...g, mealType: normalizeMealType(data.guest.mealType, g.isChild) } : g
+              ),
+            };
+          }
+          return rsvp;
+        })
+      );
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo actualizar el platillo del invitado.');
+    }
+  };
+
   const handleMarkFamilyAsNotAttending = async (rsvp: RSVP) => {
     if (!window.confirm(`¿Marcar a la familia "${rsvp.familyName}" como que no asistirán?`)) {
       return;
@@ -618,6 +691,7 @@ export default function AdminPage() {
           guests: rsvp.guests.map((guest) => ({
             name: guest.name,
             isChild: guest.isChild,
+            mealType: guest.mealType,
             confirmed: false,
           })),
           rsvpId: rsvp.id,
@@ -656,6 +730,7 @@ export default function AdminPage() {
       {
         name: tempGuestName.trim(),
         isChild: tempGuestType === 'child',
+        mealType: tempGuestMeal,
         confirmed: null, // Pre-registered manual guests default to pending (null)
       },
     ]);
@@ -989,7 +1064,7 @@ export default function AdminPage() {
   const handleExportCSV = () => {
     if (rsvps.length === 0 || !selectedEvent) return;
 
-    const headers = ['Familia', 'Invitados por', 'Invitación enviada', 'Telefono de Contacto', 'Nombre de Invitado', 'Tipo', 'Asistirá', 'Mensaje/Comentarios', 'Fecha Confirmación'];
+    const headers = ['Familia', 'Invitados por', 'Invitación enviada', 'Telefono de Contacto', 'Nombre de Invitado', 'Tipo', 'Platillo', 'Asistirá', 'Mensaje/Comentarios', 'Fecha Confirmación'];
     
     const rows = rsvps.flatMap(rsvp => 
       rsvp.guests.map(guest => [
@@ -999,6 +1074,7 @@ export default function AdminPage() {
         rsvp.contactPhone || 'N/A',
         guest.name,
         guest.isChild ? 'Niño' : 'Adulto',
+        MEAL_SHORT_LABEL[normalizeMealType(guest.mealType, guest.isChild)],
         guest.confirmed === true ? 'Sí' : guest.confirmed === false ? 'No' : 'Pendiente',
         rsvp.comments || '',
         new Date(rsvp.createdAt).toLocaleString('es-MX')
@@ -1037,17 +1113,40 @@ export default function AdminPage() {
   let totalChildrenDeclined = 0;
   let totalAdults = 0;
   let totalChildren = 0;
+  // Platillos: se cuentan por `mealType`, no por si el invitado es adulto o
+  // niño, porque hay adultos que piden platillo de niño.
+  let totalAdultMeals = 0;
+  let totalChildMeals = 0;
+  let totalAdultMealsConfirmed = 0;
+  let totalChildMealsConfirmed = 0;
+  let adultsWithChildMealConfirmed = 0;
+  let childrenWithAdultMealConfirmed = 0;
 
   sourceFilteredRsvps.forEach(rsvp => {
     rsvp.guests.forEach(guest => {
+      const mealType = normalizeMealType(guest.mealType, guest.isChild);
       totalGuests++;
       if (guest.isChild) {
         totalChildren++;
       } else {
         totalAdults++;
       }
+      if (guest.confirmed !== false) {
+        if (mealType === MEAL_CHILD) {
+          totalChildMeals++;
+        } else {
+          totalAdultMeals++;
+        }
+      }
       if (guest.confirmed === true) {
         totalConfirmed++;
+        if (mealType === MEAL_CHILD) {
+          totalChildMealsConfirmed++;
+          if (!guest.isChild) adultsWithChildMealConfirmed++;
+        } else {
+          totalAdultMealsConfirmed++;
+          if (guest.isChild) childrenWithAdultMealConfirmed++;
+        }
         if (guest.isChild) {
           totalChildrenConfirmed++;
         } else {
@@ -1372,6 +1471,58 @@ export default function AdminPage() {
               </div>
             </div>
 
+            <div
+              className="stat-card kpi-card-clickable"
+              onClick={() => { setActiveKpiModal('adult_meals'); setKpiModalSearch(''); }}
+              title="Haz clic para ver quién come platillo de adulto"
+            >
+              <div className="stat-value">
+                {totalAdultMealsConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalAdultMeals}</span>
+              </div>
+              <div className="stat-label">🍽️ Platillos de Adulto</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Confirmados / Esperados Netos
+              </div>
+              {childrenWithAdultMealConfirmed > 0 ? (
+                <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '4px', fontWeight: 600 }}>
+                  Incluye {childrenWithAdultMealConfirmed} niño{childrenWithAdultMealConfirmed === 1 ? '' : 's'} con platillo de adulto
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Todos son adultos
+                </div>
+              )}
+              <div style={{ fontSize: '0.72rem', color: 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Platillos ➔
+              </div>
+            </div>
+
+            <div
+              className="stat-card kpi-card-clickable"
+              onClick={() => { setActiveKpiModal('child_meals'); setKpiModalSearch(''); }}
+              title="Haz clic para ver quién come platillo de niño"
+            >
+              <div className="stat-value">
+                {totalChildMealsConfirmed} <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {totalChildMeals}</span>
+              </div>
+              <div className="stat-label">🍟 Platillos de Niño</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Confirmados / Esperados Netos
+              </div>
+              {adultsWithChildMealConfirmed > 0 ? (
+                <div style={{ fontSize: '0.75rem', color: '#c2410c', marginTop: '4px', fontWeight: 600 }}>
+                  Incluye {adultsWithChildMealConfirmed} adulto{adultsWithChildMealConfirmed === 1 ? '' : 's'} con platillo de niño
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Todos son niños
+                </div>
+              )}
+              <div style={{ fontSize: '0.72rem', color: 'var(--gold-dark)', marginTop: '6px', fontWeight: 600 }}>
+                Ver Platillos ➔
+              </div>
+            </div>
+
             <div 
               className="stat-card kpi-card-clickable" 
               onClick={() => { setActiveKpiModal('declined'); setKpiModalSearch(''); }}
@@ -1392,209 +1543,261 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Collapsible Manual Registration Form */}
+          {/* Modal de alta / edición de familias */}
           {showAddRsvpForm && (
-            <div className="section-card" style={{ padding: '2rem 2.5rem', textAlign: 'left', borderRadius: '12px', marginBottom: '2.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(212,175,55,0.15)', paddingBottom: '0.8rem' }}>
-                <h3 style={{ fontSize: '1.5rem', color: 'var(--gold-dark)', margin: 0 }}>
-                  {editingRsvpId ? 'Editar Familia / Invitado' : 'Registrar Nueva Familia / Invitado'}
-                </h3>
-                <button onClick={resetRsvpForm} className="btn-remove-guest" style={{ color: 'var(--text-muted)' }}>
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveRsvpManual}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
-                  <div className="rsvp-form-group">
-                    <label className="rsvp-label" htmlFor="manual-family-name">Nombre de la Familia</label>
-                    <input
-                      id="manual-family-name"
-                      type="text"
-                      className="rsvp-input"
-                      placeholder="Ej: Familia López Rojas"
-                      value={newFamilyName}
-                      onChange={(e) => setNewFamilyName(e.target.value)}
-                      required
-                    />
+            <div
+              className="rsvp-modal-overlay"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) resetRsvpForm();
+              }}
+            >
+              <div className="rsvp-modal-card" role="dialog" aria-modal="true" aria-labelledby="rsvp-modal-title">
+                <div className="rsvp-modal-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(212, 175, 55, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {editingRsvpId ? <Edit size={22} style={{ color: 'var(--gold-dark)' }} /> : <Plus size={22} style={{ color: 'var(--gold-dark)' }} />}
+                    </div>
+                    <div>
+                      <h3 id="rsvp-modal-title" className="rsvp-modal-title">
+                        {editingRsvpId ? 'Editar Familia / Invitado' : 'Registrar Nueva Familia / Invitado'}
+                      </h3>
+                      <p className="rsvp-modal-subtitle">
+                        {editingRsvpId
+                          ? 'Actualiza los datos, integrantes y platillos de esta familia.'
+                          : 'Captura la familia, sus integrantes y el platillo de cada uno.'}
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="rsvp-form-group">
-                    <label className="rsvp-label" htmlFor="manual-contact-phone">Teléfono de Contacto</label>
-                    <input
-                      id="manual-contact-phone"
-                      type="tel"
-                      className="rsvp-input"
-                      placeholder="Ej: (55) 1234-5678"
-                      value={newContactPhone}
-                      onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="rsvp-form-group">
-                    <label className="rsvp-label" htmlFor="manual-invited-by">Invitados por</label>
-                    <select
-                      id="manual-invited-by"
-                      className="rsvp-input"
-                      value={newInvitedBy}
-                      onChange={(e) => setNewInvitedBy(e.target.value)}
-                      required
-                    >
-                      <option value="" disabled>
-                        Selecciona una opción
-                      </option>
-                      <option value="papa">Papá</option>
-                      <option value="mama">Mamá</option>
-                      <option value="bebes">Bebés</option>
-                    </select>
-                  </div>
-
-                  <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input
-                      id="manual-invitation-sent"
-                      type="checkbox"
-                      checked={newInvitationSent}
-                      onChange={(e) => setNewInvitationSent(e.target.checked)}
-                      style={{ width: '18px', height: '18px' }}
-                    />
-                    <label className="rsvp-label" htmlFor="manual-invitation-sent" style={{ marginBottom: 0, cursor: 'pointer' }}>
-                      Ya se envió la invitación
-                    </label>
-                  </div>
+                  <button type="button" onClick={resetRsvpForm} className="rsvp-modal-close" title="Cerrar">
+                    <X size={22} />
+                  </button>
                 </div>
 
-                <div className="rsvp-form-group" style={{ marginTop: '1rem' }}>
-                  <label className="rsvp-label">Integrantes</label>
+                <form onSubmit={handleSaveRsvpManual} className="rsvp-modal-form">
+                  <div className="rsvp-modal-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
+                    <div className="rsvp-form-group">
+                      <label className="rsvp-label" htmlFor="manual-family-name">Nombre de la Familia</label>
+                      <input
+                        id="manual-family-name"
+                        type="text"
+                        className="rsvp-input"
+                        placeholder="Ej: Familia López Rojas"
+                        value={newFamilyName}
+                        onChange={(e) => setNewFamilyName(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="rsvp-form-group">
+                      <label className="rsvp-label" htmlFor="manual-contact-phone">Teléfono de Contacto</label>
+                      <input
+                        id="manual-contact-phone"
+                        type="tel"
+                        className="rsvp-input"
+                        placeholder="Ej: (55) 1234-5678"
+                        value={newContactPhone}
+                        onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
+                      />
+                    </div>
+
+                    <div className="rsvp-form-group">
+                      <label className="rsvp-label" htmlFor="manual-invited-by">Invitados por</label>
+                      <select
+                        id="manual-invited-by"
+                        className="rsvp-input"
+                        value={newInvitedBy}
+                        onChange={(e) => setNewInvitedBy(e.target.value)}
+                        required
+                      >
+                        <option value="" disabled>
+                          Selecciona una opción
+                        </option>
+                        <option value="papa">Papá</option>
+                        <option value="mama">Mamá</option>
+                        <option value="bebes">Bebés</option>
+                      </select>
+                    </div>
+
+                    <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        id="manual-invitation-sent"
+                        type="checkbox"
+                        checked={newInvitationSent}
+                        onChange={(e) => setNewInvitationSent(e.target.checked)}
+                        style={{ width: '18px', height: '18px' }}
+                      />
+                      <label className="rsvp-label" htmlFor="manual-invitation-sent" style={{ marginBottom: 0, cursor: 'pointer' }}>
+                        Ya se envió la invitación
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="rsvp-form-group" style={{ marginTop: '1rem' }}>
+                    <label className="rsvp-label">Integrantes</label>
                   
-                  {newGuestsList.map((g, idx) => (
-                    <div key={idx} className="guest-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.5rem', gap: '0.75rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto auto', alignItems: 'center' }}>
+                    {newGuestsList.map((g, idx) => (
+                      <div key={idx} className="guest-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.5rem', gap: '0.75rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto auto auto', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="rsvp-input"
+                          value={g.name}
+                          onChange={(e) => {
+                            const updated = [...newGuestsList];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            setNewGuestsList(updated);
+                          }}
+                          placeholder="Nombre del integrante"
+                        />
+                        <select
+                          className="guest-builder-select"
+                          value={g.isChild ? 'child' : 'adult'}
+                          onChange={(e) => {
+                            const isChild = e.target.value === 'child';
+                            const updated = [...newGuestsList];
+                            // Al cambiar el tipo se propone el platillo que le
+                            // toca; el select de al lado permite cambiarlo.
+                            updated[idx] = { ...updated[idx], isChild, mealType: isChild ? MEAL_CHILD : MEAL_ADULT };
+                            setNewGuestsList(updated);
+                          }}
+                          title="Tipo de invitado"
+                        >
+                          <option value="adult">👨 Adulto</option>
+                          <option value="child">👶 Niño</option>
+                        </select>
+                        <select
+                          className="guest-builder-select"
+                          value={g.mealType}
+                          onChange={(e) => {
+                            const updated = [...newGuestsList];
+                            updated[idx] = { ...updated[idx], mealType: normalizeMealType(e.target.value, updated[idx].isChild) };
+                            setNewGuestsList(updated);
+                          }}
+                          title="Platillo que se le servirá"
+                          style={{ borderColor: isMealMismatch(g.isChild, g.mealType) ? '#c2410c' : undefined }}
+                        >
+                          <option value={MEAL_ADULT}>🍽️ Platillo adulto</option>
+                          <option value={MEAL_CHILD}>🍟 Platillo niño</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...newGuestsList];
+                            const currentVal = updated[idx].confirmed;
+                            let nextVal: boolean | null = null;
+                            if (currentVal === null) nextVal = true;
+                            else if (currentVal === true) nextVal = false;
+                            else nextVal = null;
+                            updated[idx] = { ...updated[idx], confirmed: nextVal };
+                            setNewGuestsList(updated);
+                          }}
+                          className={`status-badge ${
+                            g.confirmed === true
+                              ? 'status-confirmed'
+                              : g.confirmed === false
+                              ? 'status-declined'
+                              : 'status-pending'
+                          }`}
+                          style={{ border: 'none', cursor: 'pointer', textTransform: 'none' }}
+                          title="Cambiar estado (Pendiente ➔ Asistirá ➔ No asistirá)"
+                        >
+                          {g.confirmed === true
+                            ? 'Asistirá'
+                            : g.confirmed === false
+                            ? 'No asistirá'
+                            : 'Pendiente'}
+                        </button>
+                        <button type="button" onClick={() => handleRemoveTempGuest(idx)} className="btn-remove-guest">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="guest-builder-row" style={{ marginTop: '1rem' }}>
                       <input
                         type="text"
                         className="rsvp-input"
-                        value={g.name}
-                        onChange={(e) => {
-                          const updated = [...newGuestsList];
-                          updated[idx] = { ...updated[idx], name: e.target.value };
-                          setNewGuestsList(updated);
-                        }}
-                        placeholder="Nombre del integrante"
+                        placeholder="Nombre completo..."
+                        value={tempGuestName}
+                        onChange={(e) => setTempGuestName(e.target.value)}
                       />
                       <select
                         className="guest-builder-select"
-                        value={g.isChild ? 'child' : 'adult'}
+                        value={tempGuestType}
                         onChange={(e) => {
-                          const updated = [...newGuestsList];
-                          updated[idx] = { ...updated[idx], isChild: e.target.value === 'child' };
-                          setNewGuestsList(updated);
+                          const type = e.target.value as 'adult' | 'child';
+                          setTempGuestType(type);
+                          setTempGuestMeal(type === 'child' ? MEAL_CHILD : MEAL_ADULT);
                         }}
+                        title="Tipo de invitado"
                       >
                         <option value="adult">👨 Adulto</option>
                         <option value="child">👶 Niño</option>
                       </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = [...newGuestsList];
-                          const currentVal = updated[idx].confirmed;
-                          let nextVal: boolean | null = null;
-                          if (currentVal === null) nextVal = true;
-                          else if (currentVal === true) nextVal = false;
-                          else nextVal = null;
-                          updated[idx] = { ...updated[idx], confirmed: nextVal };
-                          setNewGuestsList(updated);
-                        }}
-                        className={`status-badge ${
-                          g.confirmed === true
-                            ? 'status-confirmed'
-                            : g.confirmed === false
-                            ? 'status-declined'
-                            : 'status-pending'
-                        }`}
-                        style={{ border: 'none', cursor: 'pointer', textTransform: 'none' }}
-                        title="Cambiar estado (Pendiente ➔ Asistirá ➔ No asistirá)"
+                      <select
+                        className="guest-builder-select"
+                        value={tempGuestMeal}
+                        onChange={(e) => setTempGuestMeal(normalizeMealType(e.target.value, tempGuestType === 'child'))}
+                        title="Platillo que se le servirá"
                       >
-                        {g.confirmed === true
-                          ? 'Asistirá'
-                          : g.confirmed === false
-                          ? 'No asistirá'
-                          : 'Pendiente'}
-                      </button>
-                      <button type="button" onClick={() => handleRemoveTempGuest(idx)} className="btn-remove-guest">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  ))}
-
-                  <div className="guest-builder-row" style={{ marginTop: '1rem' }}>
-                    <input
-                      type="text"
-                      className="rsvp-input"
-                      placeholder="Nombre completo..."
-                      value={tempGuestName}
-                      onChange={(e) => setTempGuestName(e.target.value)}
-                    />
-                    <select
-                      className="guest-builder-select"
-                      value={tempGuestType}
-                      onChange={(e) => setTempGuestType(e.target.value as 'adult' | 'child')}
-                    >
-                      <option value="adult">👨 Adulto</option>
-                      <option value="child">👶 Niño</option>
-                    </select>
+                        <option value={MEAL_ADULT}>🍽️ Platillo adulto</option>
+                        <option value={MEAL_CHILD}>🍟 Platillo niño</option>
+                      </select>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
 
-                      <button
-                        type="button"
-                        onClick={handleAddTempGuest}
-                        className="btn-outline"
-                        style={{ padding: '0.9rem 1.2rem', borderRadius: '8px' }}
-                      >
-                        <Plus size={16} />
-                        Agregar
-                      </button>
+                        <button
+                          type="button"
+                          onClick={handleAddTempGuest}
+                          className="btn-outline"
+                          style={{ padding: '0.9rem 1.2rem', borderRadius: '8px' }}
+                        >
+                          <Plus size={16} />
+                          Agregar
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="manual-comments">Comentarios o Notas</label>
-                  <textarea
-                    id="manual-comments"
-                    className="rsvp-input"
-                    placeholder="Comentarios adicionales"
-                    value={newComments}
-                    onChange={(e) => setNewComments(e.target.value)}
-                    style={{ minHeight: '60px', resize: 'vertical' }}
-                  />
-                </div>
+                  <div className="rsvp-form-group">
+                    <label className="rsvp-label" htmlFor="manual-comments">Comentarios o Notas</label>
+                    <textarea
+                      id="manual-comments"
+                      className="rsvp-input"
+                      placeholder="Comentarios adicionales"
+                      value={newComments}
+                      onChange={(e) => setNewComments(e.target.value)}
+                      style={{ minHeight: '60px', resize: 'vertical' }}
+                    />
+                  </div>
 
-                {rsvpAddError && (
-                  <p style={{ color: '#B22222', fontSize: '0.9rem', marginBottom: '1.5rem', fontWeight: 500 }}>
-                    {rsvpAddError}
-                  </p>
-                )}
+                  {rsvpAddError && (
+                    <p style={{ color: '#B22222', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+                      {rsvpAddError}
+                    </p>
+                  )}
+                  </div>
 
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-                  <button
-                    type="button"
-                    onClick={resetRsvpForm}
-                    className="btn-outline"
-                  >
-                    Cancelar
-                  </button>
-                  
-                  <button
-                    type="submit"
-                    onClick={handleSaveRsvpManual}
-                    className="btn-gold"
-                    disabled={rsvpAddLoading}
-                  >
-                    <Save size={16} />
-                    {rsvpAddLoading ? 'Guardando...' : editingRsvpId ? 'Guardar Cambios' : 'Guardar Familia'}
-                  </button>
-                </div>
-              </form>
+                  <div className="rsvp-modal-footer">
+                    <button
+                      type="button"
+                      onClick={resetRsvpForm}
+                      className="btn-outline"
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="btn-gold"
+                      disabled={rsvpAddLoading}
+                    >
+                      <Save size={16} />
+                      {rsvpAddLoading ? 'Guardando...' : editingRsvpId ? 'Guardar Cambios' : 'Guardar Familia'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
 
@@ -1828,6 +2031,34 @@ export default function AdminPage() {
                                     ? 'No asistirá'
                                     : 'Pendiente'}
                                 </button>
+                                {(() => {
+                                  const mealType = normalizeMealType(guest.mealType, guest.isChild);
+                                  const mismatch = isMealMismatch(guest.isChild, mealType);
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleGuestMeal(rsvp.id, guest.id, mealType)}
+                                      style={{
+                                        fontSize: '0.65rem',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        color: mismatch ? '#c2410c' : '#475569',
+                                        backgroundColor: mismatch ? '#fff7ed' : '#f1f5f9',
+                                        border: `1px solid ${mismatch ? '#fed7aa' : '#e2e8f0'}`,
+                                      }}
+                                      title={
+                                        mismatch
+                                          ? `${guest.isChild ? 'Niño' : 'Adulto'} con platillo de ${MEAL_SHORT_LABEL[mealType].toLowerCase()}. Click para cambiarlo.`
+                                          : 'Click para cambiar el platillo (adulto ⇄ niño)'
+                                      }
+                                    >
+                                      {MEAL_EMOJI[mealType]} {MEAL_SHORT_LABEL[mealType]}
+                                    </button>
+                                  );
+                                })()}
                               </div>
                             ))}
                           </div>
@@ -1971,6 +2202,7 @@ export default function AdminPage() {
               invitedBy?: string;
               contactPhone?: string;
               isChild: boolean;
+              mealType: MealType;
               statusLabel: string;
               statusClass: string;
               comments?: string;
@@ -2007,6 +2239,7 @@ export default function AdminPage() {
                       invitedBy: rsvp.invitedBy,
                       contactPhone: rsvp.contactPhone,
                       isChild: g.isChild,
+                      mealType: normalizeMealType(g.mealType, g.isChild),
                       statusLabel: 'Asistirá',
                       statusClass: 'status-confirmed',
                       comments: rsvp.comments || undefined
@@ -2039,6 +2272,7 @@ export default function AdminPage() {
                       invitedBy: rsvp.invitedBy,
                       contactPhone: rsvp.contactPhone,
                       isChild: false,
+                      mealType: normalizeMealType(g.mealType, false),
                       statusLabel: 'Asistirá (Adulto)',
                       statusClass: 'status-confirmed',
                       comments: rsvp.comments || undefined
@@ -2071,6 +2305,7 @@ export default function AdminPage() {
                       invitedBy: rsvp.invitedBy,
                       contactPhone: rsvp.contactPhone,
                       isChild: true,
+                      mealType: normalizeMealType(g.mealType, true),
                       statusLabel: 'Asistirá (Niño)',
                       statusClass: 'status-confirmed',
                       comments: rsvp.comments || undefined
@@ -2082,6 +2317,46 @@ export default function AdminPage() {
               if (kpiModalSearch) {
                 const q = kpiModalSearch.toLowerCase();
                 modalGuestRows = modalGuestRows.filter(r => 
+                  r.guestName.toLowerCase().includes(q) ||
+                  r.familyName.toLowerCase().includes(q) ||
+                  (r.invitedBy || '').toLowerCase().includes(q)
+                );
+              }
+            } else if (activeKpiModal === 'adult_meals' || activeKpiModal === 'child_meals') {
+              const targetMeal: MealType = activeKpiModal === 'child_meals' ? MEAL_CHILD : MEAL_ADULT;
+              const isChildMeal = targetMeal === MEAL_CHILD;
+
+              modalTitle = isChildMeal ? 'Platillos de Niño' : 'Platillos de Adulto';
+              modalSubtitle = isChildMeal
+                ? `${totalChildMealsConfirmed} confirmados de ${totalChildMeals} esperados netos · ${adultsWithChildMealConfirmed} son adultos`
+                : `${totalAdultMealsConfirmed} confirmados de ${totalAdultMeals} esperados netos · ${childrenWithAdultMealConfirmed} son niños`;
+              modalIcon = <Utensils size={22} style={{ color: isChildMeal ? '#c2410c' : 'var(--gold-dark)' }} />;
+              modalColor = isChildMeal ? '#c2410c' : 'var(--gold-dark)';
+
+              sourceFilteredRsvps.forEach(rsvp => {
+                rsvp.guests.forEach(g => {
+                  const mealType = normalizeMealType(g.mealType, g.isChild);
+                  // Las bajas no comen: solo cuentan confirmados y pendientes.
+                  if (mealType === targetMeal && g.confirmed !== false) {
+                    modalGuestRows.push({
+                      id: `g-${rsvp.id}-${g.id}`,
+                      guestName: g.name,
+                      familyName: rsvp.familyName,
+                      invitedBy: rsvp.invitedBy,
+                      contactPhone: rsvp.contactPhone,
+                      isChild: g.isChild,
+                      mealType,
+                      statusLabel: g.confirmed === true ? 'Asistirá' : 'Pendiente',
+                      statusClass: g.confirmed === true ? 'status-confirmed' : 'status-pending',
+                      comments: rsvp.comments || undefined
+                    });
+                  }
+                });
+              });
+
+              if (kpiModalSearch) {
+                const q = kpiModalSearch.toLowerCase();
+                modalGuestRows = modalGuestRows.filter(r =>
                   r.guestName.toLowerCase().includes(q) ||
                   r.familyName.toLowerCase().includes(q) ||
                   (r.invitedBy || '').toLowerCase().includes(q)
@@ -2103,6 +2378,7 @@ export default function AdminPage() {
                       invitedBy: rsvp.invitedBy,
                       contactPhone: rsvp.contactPhone,
                       isChild: g.isChild,
+                      mealType: normalizeMealType(g.mealType, g.isChild),
                       statusLabel: 'No asistirá',
                       statusClass: 'status-declined',
                       comments: rsvp.comments || undefined
@@ -2245,6 +2521,14 @@ export default function AdminPage() {
                                   >
                                     {g.name}
                                     {g.isChild && <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600, backgroundColor: '#eff6ff', padding: '1px 4px', borderRadius: '4px' }}>Niño</span>}
+                                    {isMealMismatch(g.isChild, normalizeMealType(g.mealType, g.isChild)) && (
+                                      <span
+                                        style={{ fontSize: '0.65rem', color: '#c2410c', fontWeight: 600, backgroundColor: '#fff7ed', padding: '1px 4px', borderRadius: '4px' }}
+                                        title={`Come platillo de ${MEAL_SHORT_LABEL[normalizeMealType(g.mealType, g.isChild)].toLowerCase()}`}
+                                      >
+                                        {MEAL_EMOJI[normalizeMealType(g.mealType, g.isChild)]} Platillo {MEAL_SHORT_LABEL[normalizeMealType(g.mealType, g.isChild)].toLowerCase()}
+                                      </span>
+                                    )}
                                   </span>
                                 ))}
                               </div>
@@ -2269,6 +2553,20 @@ export default function AdminPage() {
                                 ) : (
                                   <span style={{ fontSize: '0.68rem', color: '#475569', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '12px', fontWeight: 500 }}>Adulto</span>
                                 )}
+                                <span
+                                  style={{
+                                    fontSize: '0.68rem',
+                                    padding: '1px 6px',
+                                    borderRadius: '12px',
+                                    fontWeight: 600,
+                                    color: isMealMismatch(row.isChild, row.mealType) ? '#c2410c' : '#475569',
+                                    backgroundColor: isMealMismatch(row.isChild, row.mealType) ? '#fff7ed' : '#f8fafc',
+                                    border: `1px solid ${isMealMismatch(row.isChild, row.mealType) ? '#fed7aa' : '#e2e8f0'}`,
+                                  }}
+                                  title={`Platillo de ${MEAL_SHORT_LABEL[row.mealType].toLowerCase()}`}
+                                >
+                                  {MEAL_EMOJI[row.mealType]} Platillo {MEAL_SHORT_LABEL[row.mealType].toLowerCase()}
+                                </span>
                               </div>
                               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px' }}>
                                 Familia: <strong style={{ color: 'var(--text-dark)' }}>{row.familyName}</strong> · Lado: {formatInvitedByLabel(row.invitedBy || '')}

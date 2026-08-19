@@ -2,10 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Send, Users, Phone, MessageSquare } from 'lucide-react';
+import { MEAL_ADULT, MEAL_CHILD, MEAL_SHORT_LABEL, MealType, normalizeMealType } from '@/lib/meal';
 
 interface GuestInput {
   name: string;
   isChild: boolean;
+  mealType: MealType;
   confirmed: boolean | null;
 }
 
@@ -13,6 +15,7 @@ interface RsvpGuest {
   id?: number;
   name: string;
   isChild: boolean;
+  mealType?: string | null;
   confirmed: boolean | null;
 }
 
@@ -44,6 +47,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
       ? preloadedRsvp.guests.map((guest) => ({
           name: guest.name,
           isChild: guest.isChild,
+          mealType: normalizeMealType(guest.mealType, guest.isChild),
           confirmed: guest.confirmed,
         }))
       : []
@@ -92,10 +96,19 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
     }, 450);
   };
 
+  const handleSetGuestMeal = (index: number, mealType: MealType) => {
+    const updated = [...guests];
+    updated[index] = { ...updated[index], mealType };
+    setGuests(updated);
+  };
+
   const buildWhatsAppLink = () => {
     const confirmedList = guests
       .filter((guest) => guest.confirmed === true)
-      .map((guest) => `• ${guest.name} (${guest.isChild ? 'Niño' : 'Adulto'})`)
+      .map(
+        (guest) =>
+          `• ${guest.name} (${guest.isChild ? 'Niño' : 'Adulto'} — platillo ${MEAL_SHORT_LABEL[guest.mealType].toLowerCase()})`
+      )
       .join('\n');
 
     const declinedList = guests
@@ -320,6 +333,32 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                 <span className="guest-type-tag" style={{ cursor: 'default' }}>
                   {guest.isChild ? '👶 Niño' : '👨 Adulto'}
                 </span>
+
+                {guest.confirmed !== false && (
+                  <div className="guest-meal-picker">
+                    <span className="guest-meal-label">Platillo</span>
+                    <div className="guest-meal-toggle">
+                      <button
+                        type="button"
+                        onClick={() => handleSetGuestMeal(idx, MEAL_ADULT)}
+                        className={`meal-btn ${guest.mealType === MEAL_ADULT ? 'active' : ''}`}
+                        disabled={saving}
+                        aria-pressed={guest.mealType === MEAL_ADULT}
+                      >
+                        🍽️ Adulto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetGuestMeal(idx, MEAL_CHILD)}
+                        className={`meal-btn ${guest.mealType === MEAL_CHILD ? 'active' : ''}`}
+                        disabled={saving}
+                        aria-pressed={guest.mealType === MEAL_CHILD}
+                      >
+                        🍟 Niño
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="guest-controls">
                 <div className="guest-rsvp-toggle">

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ensureUniqueRsvpSlug } from '@/lib/rsvp-slug';
+import { normalizeMealType } from '@/lib/meal';
 
 interface RsvpGuestPayload {
   name: string;
   isChild?: boolean;
+  mealType?: string;
   confirmed?: boolean;
 }
 
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
               rsvpId,
               name: guest.name,
               isChild: guest.isChild || false,
+              mealType: normalizeMealType(guest.mealType, guest.isChild || false),
               confirmed: guest.confirmed === true ? true : (guest.confirmed === false ? false : null),
             })),
           }),
@@ -122,6 +125,7 @@ export async function POST(request: Request) {
           create: guests.map((guest) => ({
             name: guest.name,
             isChild: guest.isChild || false,
+            mealType: normalizeMealType(guest.mealType, guest.isChild || false),
             confirmed: guest.confirmed === true ? true : (guest.confirmed === false ? false : null),
           })),
         },

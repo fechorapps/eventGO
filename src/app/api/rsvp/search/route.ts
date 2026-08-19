@@ -42,6 +42,7 @@ export async function GET(request: Request) {
         id: guest.id,
         name: guest.name,
         isChild: guest.isChild,
+        mealType: guest.mealType,
         confirmed: guest.confirmed,
       })),
     }));

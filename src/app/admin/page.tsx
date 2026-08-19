@@ -715,18 +715,34 @@ export default function AdminPage() {
   };
 
   // RSVP Form Builder Handlers
-  const handleAddTempGuest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tempGuestName.trim()) return;
+  const handleUpdateGuest = (idx: number, updates: Partial<GuestInput>) => {
+    setNewGuestsList((prev) => {
+      const next = [...prev];
+      const current = next[idx];
+      const merged = { ...current, ...updates };
+      if (updates.isChild !== undefined && updates.mealType === undefined) {
+        merged.mealType = updates.isChild ? MEAL_CHILD : MEAL_ADULT;
+      }
+      next[idx] = merged;
+      return next;
+    });
+  };
 
-    if (newGuestsList.some(g => g.name.toLowerCase() === tempGuestName.trim().toLowerCase())) {
-      setRsvpAddError('Este integrante ya fue agregado a la lista temporal.');
+  const handleAddTempGuest = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!tempGuestName.trim()) {
+      setRsvpAddError('Escribe el nombre del integrante para agregarlo.');
+      return;
+    }
+
+    if (newGuestsList.some((g) => g.name.toLowerCase() === tempGuestName.trim().toLowerCase())) {
+      setRsvpAddError('Este integrante ya fue agregado a la lista.');
       return;
     }
 
     setRsvpAddError('');
-    setNewGuestsList([
-      ...newGuestsList,
+    setNewGuestsList((prev) => [
+      ...prev,
       {
         name: tempGuestName.trim(),
         isChild: tempGuestType === 'child',
@@ -750,8 +766,18 @@ export default function AdminPage() {
       return;
     }
 
+    if (!newInvitedBy.trim()) {
+      setRsvpAddError('Selecciona el lado de la invitación (Papá, Mamá o Bebés).');
+      return;
+    }
+
     if (newGuestsList.length === 0) {
-      setRsvpAddError('Agrega al menos un miembro a la familia.');
+      setRsvpAddError('Agrega al menos un integrante a la familia.');
+      return;
+    }
+
+    if (newGuestsList.some((g) => !g.name.trim())) {
+      setRsvpAddError('Todos los integrantes deben tener nombre.');
       return;
     }
 
@@ -1552,249 +1578,452 @@ export default function AdminPage() {
               }}
             >
               <div className="rsvp-modal-card" role="dialog" aria-modal="true" aria-labelledby="rsvp-modal-title">
+                {/* 1. Modal Header */}
                 <div className="rsvp-modal-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(212, 175, 55, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {editingRsvpId ? <Edit size={22} style={{ color: 'var(--gold-dark)' }} /> : <Plus size={22} style={{ color: 'var(--gold-dark)' }} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div className="rsvp-modal-icon-badge">
+                      {editingRsvpId ? (
+                        <Edit size={22} style={{ color: 'var(--gold-dark)' }} />
+                      ) : (
+                        <Plus size={22} style={{ color: 'var(--gold-dark)' }} />
+                      )}
                     </div>
                     <div>
-                      <h3 id="rsvp-modal-title" className="rsvp-modal-title">
-                        {editingRsvpId ? 'Editar Familia / Invitado' : 'Registrar Nueva Familia / Invitado'}
-                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3 id="rsvp-modal-title" className="rsvp-modal-title">
+                          {editingRsvpId ? 'Editar Familia' : 'Registrar Familia'}
+                        </h3>
+                        {editingRsvpId ? (
+                          <span className="rsvp-modal-tag">ID #{editingRsvpId}</span>
+                        ) : (
+                          <span className="rsvp-modal-tag new">Nueva</span>
+                        )}
+                      </div>
                       <p className="rsvp-modal-subtitle">
                         {editingRsvpId
-                          ? 'Actualiza los datos, integrantes y platillos de esta familia.'
-                          : 'Captura la familia, sus integrantes y el platillo de cada uno.'}
+                          ? 'Gestiona datos de contacto, integrantes, platillos y confirmación.'
+                          : 'Captura los datos de la familia, sus integrantes y requerimientos.'}
                       </p>
                     </div>
                   </div>
-                  <button type="button" onClick={resetRsvpForm} className="rsvp-modal-close" title="Cerrar">
-                    <X size={22} />
-                  </button>
-                </div>
 
-                <form onSubmit={handleSaveRsvpManual} className="rsvp-modal-form">
-                  <div className="rsvp-modal-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
-                    <div className="rsvp-form-group">
-                      <label className="rsvp-label" htmlFor="manual-family-name">Nombre de la Familia</label>
-                      <input
-                        id="manual-family-name"
-                        type="text"
-                        className="rsvp-input"
-                        placeholder="Ej: Familia López Rojas"
-                        value={newFamilyName}
-                        onChange={(e) => setNewFamilyName(e.target.value)}
-                        required
-                      />
+                  {/* Header Summary & Close */}
+                  <div className="rsvp-header-summary">
+                    <div className="rsvp-header-stat">
+                      <Users size={14} style={{ color: 'var(--gold-dark)' }} />
+                      <span>{newGuestsList.length} {newGuestsList.length === 1 ? 'persona' : 'personas'}</span>
                     </div>
-
-                    <div className="rsvp-form-group">
-                      <label className="rsvp-label" htmlFor="manual-contact-phone">Teléfono de Contacto</label>
-                      <input
-                        id="manual-contact-phone"
-                        type="tel"
-                        className="rsvp-input"
-                        placeholder="Ej: (55) 1234-5678"
-                        value={newContactPhone}
-                        onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
-                      />
+                    <div className="rsvp-header-stat">
+                      <span>🍽️ {newGuestsList.filter(g => g.mealType === MEAL_ADULT).length}</span>
+                      <span style={{ color: '#cbd5e1' }}>·</span>
+                      <span>🍟 {newGuestsList.filter(g => g.mealType === MEAL_CHILD).length}</span>
                     </div>
-
-                    <div className="rsvp-form-group">
-                      <label className="rsvp-label" htmlFor="manual-invited-by">Invitados por</label>
-                      <select
-                        id="manual-invited-by"
-                        className="rsvp-input"
-                        value={newInvitedBy}
-                        onChange={(e) => setNewInvitedBy(e.target.value)}
-                        required
-                      >
-                        <option value="" disabled>
-                          Selecciona una opción
-                        </option>
-                        <option value="papa">Papá</option>
-                        <option value="mama">Mamá</option>
-                        <option value="bebes">Bebés</option>
-                      </select>
-                    </div>
-
-                    <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input
-                        id="manual-invitation-sent"
-                        type="checkbox"
-                        checked={newInvitationSent}
-                        onChange={(e) => setNewInvitationSent(e.target.checked)}
-                        style={{ width: '18px', height: '18px' }}
-                      />
-                      <label className="rsvp-label" htmlFor="manual-invitation-sent" style={{ marginBottom: 0, cursor: 'pointer' }}>
-                        Ya se envió la invitación
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="rsvp-form-group" style={{ marginTop: '1rem' }}>
-                    <label className="rsvp-label">Integrantes</label>
-                  
-                    {newGuestsList.map((g, idx) => (
-                      <div key={idx} className="guest-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.5rem', gap: '0.75rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto auto auto', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          className="rsvp-input"
-                          value={g.name}
-                          onChange={(e) => {
-                            const updated = [...newGuestsList];
-                            updated[idx] = { ...updated[idx], name: e.target.value };
-                            setNewGuestsList(updated);
-                          }}
-                          placeholder="Nombre del integrante"
-                        />
-                        <select
-                          className="guest-builder-select"
-                          value={g.isChild ? 'child' : 'adult'}
-                          onChange={(e) => {
-                            const isChild = e.target.value === 'child';
-                            const updated = [...newGuestsList];
-                            // Al cambiar el tipo se propone el platillo que le
-                            // toca; el select de al lado permite cambiarlo.
-                            updated[idx] = { ...updated[idx], isChild, mealType: isChild ? MEAL_CHILD : MEAL_ADULT };
-                            setNewGuestsList(updated);
-                          }}
-                          title="Tipo de invitado"
-                        >
-                          <option value="adult">👨 Adulto</option>
-                          <option value="child">👶 Niño</option>
-                        </select>
-                        <select
-                          className="guest-builder-select"
-                          value={g.mealType}
-                          onChange={(e) => {
-                            const updated = [...newGuestsList];
-                            updated[idx] = { ...updated[idx], mealType: normalizeMealType(e.target.value, updated[idx].isChild) };
-                            setNewGuestsList(updated);
-                          }}
-                          title="Platillo que se le servirá"
-                          style={{ borderColor: isMealMismatch(g.isChild, g.mealType) ? '#c2410c' : undefined }}
-                        >
-                          <option value={MEAL_ADULT}>🍽️ Platillo adulto</option>
-                          <option value={MEAL_CHILD}>🍟 Platillo niño</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = [...newGuestsList];
-                            const currentVal = updated[idx].confirmed;
-                            let nextVal: boolean | null = null;
-                            if (currentVal === null) nextVal = true;
-                            else if (currentVal === true) nextVal = false;
-                            else nextVal = null;
-                            updated[idx] = { ...updated[idx], confirmed: nextVal };
-                            setNewGuestsList(updated);
-                          }}
-                          className={`status-badge ${
-                            g.confirmed === true
-                              ? 'status-confirmed'
-                              : g.confirmed === false
-                              ? 'status-declined'
-                              : 'status-pending'
-                          }`}
-                          style={{ border: 'none', cursor: 'pointer', textTransform: 'none' }}
-                          title="Cambiar estado (Pendiente ➔ Asistirá ➔ No asistirá)"
-                        >
-                          {g.confirmed === true
-                            ? 'Asistirá'
-                            : g.confirmed === false
-                            ? 'No asistirá'
-                            : 'Pendiente'}
-                        </button>
-                        <button type="button" onClick={() => handleRemoveTempGuest(idx)} className="btn-remove-guest">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    ))}
-
-                    <div className="guest-builder-row" style={{ marginTop: '1rem' }}>
-                      <input
-                        type="text"
-                        className="rsvp-input"
-                        placeholder="Nombre completo..."
-                        value={tempGuestName}
-                        onChange={(e) => setTempGuestName(e.target.value)}
-                      />
-                      <select
-                        className="guest-builder-select"
-                        value={tempGuestType}
-                        onChange={(e) => {
-                          const type = e.target.value as 'adult' | 'child';
-                          setTempGuestType(type);
-                          setTempGuestMeal(type === 'child' ? MEAL_CHILD : MEAL_ADULT);
-                        }}
-                        title="Tipo de invitado"
-                      >
-                        <option value="adult">👨 Adulto</option>
-                        <option value="child">👶 Niño</option>
-                      </select>
-                      <select
-                        className="guest-builder-select"
-                        value={tempGuestMeal}
-                        onChange={(e) => setTempGuestMeal(normalizeMealType(e.target.value, tempGuestType === 'child'))}
-                        title="Platillo que se le servirá"
-                      >
-                        <option value={MEAL_ADULT}>🍽️ Platillo adulto</option>
-                        <option value={MEAL_CHILD}>🍟 Platillo niño</option>
-                      </select>
-                    
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-
-                        <button
-                          type="button"
-                          onClick={handleAddTempGuest}
-                          className="btn-outline"
-                          style={{ padding: '0.9rem 1.2rem', borderRadius: '8px' }}
-                        >
-                          <Plus size={16} />
-                          Agregar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rsvp-form-group">
-                    <label className="rsvp-label" htmlFor="manual-comments">Comentarios o Notas</label>
-                    <textarea
-                      id="manual-comments"
-                      className="rsvp-input"
-                      placeholder="Comentarios adicionales"
-                      value={newComments}
-                      onChange={(e) => setNewComments(e.target.value)}
-                      style={{ minHeight: '60px', resize: 'vertical' }}
-                    />
-                  </div>
-
-                  {rsvpAddError && (
-                    <p style={{ color: '#B22222', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: 500 }}>
-                      {rsvpAddError}
-                    </p>
-                  )}
-                  </div>
-
-                  <div className="rsvp-modal-footer">
                     <button
                       type="button"
                       onClick={resetRsvpForm}
-                      className="btn-outline"
+                      className="rsvp-modal-close"
+                      title="Cerrar modal"
+                      aria-label="Cerrar"
                     >
-                      Cancelar
+                      <X size={20} />
                     </button>
+                  </div>
+                </div>
 
-                    <button
-                      type="submit"
-                      className="btn-gold"
-                      disabled={rsvpAddLoading}
-                    >
-                      <Save size={16} />
-                      {rsvpAddLoading ? 'Guardando...' : editingRsvpId ? 'Guardar Cambios' : 'Guardar Familia'}
-                    </button>
+                {/* 2. Form Body */}
+                <form onSubmit={handleSaveRsvpManual} className="rsvp-modal-form">
+                  <div className="rsvp-modal-body">
+                    {/* Error Banner */}
+                    {rsvpAddError && (
+                      <div className="rsvp-modal-error-banner">
+                        <Info size={18} style={{ flexShrink: 0 }} />
+                        <span>{rsvpAddError}</span>
+                      </div>
+                    )}
+
+                    {/* SECTION 1: DATOS GENERALES */}
+                    <div className="rsvp-modal-section">
+                      <div className="rsvp-modal-section-title">
+                        <Users size={16} />
+                        <span>1. Datos de la Familia</span>
+                      </div>
+
+                      <div className="rsvp-family-grid">
+                        {/* Nombre de Familia */}
+                        <div>
+                          <label className="rsvp-modern-label" htmlFor="manual-family-name">
+                            Nombre de la Familia <span style={{ color: '#dc2626' }}>*</span>
+                          </label>
+                          <div className="rsvp-input-wrapper">
+                            <Users size={16} className="rsvp-input-icon" />
+                            <input
+                              id="manual-family-name"
+                              type="text"
+                              className="rsvp-modern-input"
+                              placeholder="Ej: Familia Morales Vega"
+                              value={newFamilyName}
+                              onChange={(e) => setNewFamilyName(e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        {/* Teléfono de Contacto */}
+                        <div>
+                          <label className="rsvp-modern-label" htmlFor="manual-contact-phone">
+                            Teléfono de Contacto (WhatsApp)
+                          </label>
+                          <div className="rsvp-input-wrapper">
+                            <Phone size={16} className="rsvp-input-icon" />
+                            <input
+                              id="manual-contact-phone"
+                              type="tel"
+                              className="rsvp-modern-input"
+                              placeholder="Ej: (55) 1234-5678"
+                              value={newContactPhone}
+                              onChange={(e) => setNewContactPhone(formatMexicanPhone(e.target.value))}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Lado de Invitación */}
+                        <div>
+                          <label className="rsvp-modern-label">
+                            Lado de Invitación <span style={{ color: '#dc2626' }}>*</span>
+                          </label>
+                          <div className="rsvp-segmented-pills">
+                            <button
+                              type="button"
+                              className={`rsvp-segmented-pill ${newInvitedBy === 'papa' ? 'active' : ''}`}
+                              onClick={() => setNewInvitedBy('papa')}
+                            >
+                              👨 Papá
+                            </button>
+                            <button
+                              type="button"
+                              className={`rsvp-segmented-pill ${newInvitedBy === 'mama' ? 'active' : ''}`}
+                              onClick={() => setNewInvitedBy('mama')}
+                            >
+                              👩 Mamá
+                            </button>
+                            <button
+                              type="button"
+                              className={`rsvp-segmented-pill ${newInvitedBy === 'bebes' ? 'active' : ''}`}
+                              onClick={() => setNewInvitedBy('bebes')}
+                            >
+                              👶 Bebés
+                            </button>
+                            {newInvitedBy && !['papa', 'mama', 'bebes'].includes(newInvitedBy) && (
+                              <button
+                                type="button"
+                                className="rsvp-segmented-pill active"
+                              >
+                                ✨ {newInvitedBy}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Estado de Invitación */}
+                        <div>
+                          <label className="rsvp-modern-label">
+                            Estatus de Invitación
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setNewInvitationSent(!newInvitationSent)}
+                            className={`rsvp-invitation-toggle-card ${newInvitationSent ? 'sent' : 'pending'}`}
+                          >
+                            <div className="rsvp-toggle-icon">
+                              <Send size={15} />
+                            </div>
+                            <div className="rsvp-toggle-info">
+                              <div className="rsvp-toggle-title">
+                                {newInvitationSent ? 'Invitación enviada' : 'Invitación pendiente'}
+                              </div>
+                              <div className="rsvp-toggle-desc">
+                                {newInvitationSent ? 'Enlace entregado a la familia' : 'Aún no se envía la invitación'}
+                              </div>
+                            </div>
+                            <div className={`rsvp-toggle-switch ${newInvitationSent ? 'active' : ''}`}>
+                              <span className="rsvp-toggle-slider" />
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 2: INTEGRANTES Y PLATILLOS */}
+                    <div className="rsvp-modal-section">
+                      <div className="rsvp-modal-section-header">
+                        <div className="rsvp-modal-section-title">
+                          <Utensils size={16} />
+                          <span>2. Integrantes y Platillos ({newGuestsList.length})</span>
+                        </div>
+                        
+                        <div className="rsvp-members-quick-stats">
+                          <span className="rsvp-stat-chip">
+                            👨 {newGuestsList.filter(g => !g.isChild).length} adultos
+                          </span>
+                          <span className="rsvp-stat-chip">
+                            👶 {newGuestsList.filter(g => g.isChild).length} niños
+                          </span>
+                          <span className="rsvp-stat-chip gold">
+                            🍽️ {newGuestsList.filter(g => g.mealType === MEAL_ADULT).length} adultos / 🍟 {newGuestsList.filter(g => g.mealType === MEAL_CHILD).length} niños
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Lista de Integrantes */}
+                      <div className="rsvp-guests-container">
+                        {newGuestsList.length === 0 ? (
+                          <div className="rsvp-guests-empty">
+                            <Users size={32} style={{ opacity: 0.4 }} />
+                            <p>Aún no hay integrantes registrados en esta familia.</p>
+                            <span>Agrega al menos una persona usando el formulario inferior.</span>
+                          </div>
+                        ) : (
+                          newGuestsList.map((g, idx) => {
+                            const mismatch = isMealMismatch(g.isChild, g.mealType);
+                            return (
+                              <div key={idx} className="guest-item-card-refined">
+                                <div className="guest-card-top-row">
+                                  <div className="guest-index-badge">#{idx + 1}</div>
+                                  <input
+                                    type="text"
+                                    className="rsvp-modern-input guest-name-input"
+                                    value={g.name}
+                                    onChange={(e) => handleUpdateGuest(idx, { name: e.target.value })}
+                                    placeholder="Nombre completo del integrante"
+                                    required
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveTempGuest(idx)}
+                                    className="guest-remove-btn"
+                                    title="Eliminar integrante"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+
+                                <div className="guest-card-bottom-row">
+                                  {/* Selector Tipo */}
+                                  <div className="guest-control-group">
+                                    <span className="guest-control-label">Tipo:</span>
+                                    <div className="guest-mini-toggle">
+                                      <button
+                                        type="button"
+                                        className={`guest-mini-btn ${!g.isChild ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { isChild: false })}
+                                      >
+                                        👨 Adulto
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={`guest-mini-btn ${g.isChild ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { isChild: true })}
+                                      >
+                                        👶 Niño
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Selector Platillo */}
+                                  <div className="guest-control-group">
+                                    <span className="guest-control-label">Platillo:</span>
+                                    <div className="guest-mini-toggle">
+                                      <button
+                                        type="button"
+                                        className={`guest-mini-btn ${g.mealType === MEAL_ADULT ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { mealType: MEAL_ADULT })}
+                                      >
+                                        🍽️ Adulto
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={`guest-mini-btn ${g.mealType === MEAL_CHILD ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { mealType: MEAL_CHILD })}
+                                      >
+                                        🍟 Niño
+                                      </button>
+                                    </div>
+                                    {mismatch && (
+                                      <span
+                                        className="guest-mismatch-badge"
+                                        title={g.isChild ? 'Niño consumirá platillo de adulto' : 'Adulto consumirá platillo de niño'}
+                                      >
+                                        ⚠️ Especial
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Selector Asistencia Tri-State */}
+                                  <div className="guest-control-group guest-status-group">
+                                    <span className="guest-control-label">Asistencia:</span>
+                                    <div className="guest-status-toggle">
+                                      <button
+                                        type="button"
+                                        className={`guest-status-pill pending ${g.confirmed === null ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { confirmed: null })}
+                                        title="Pendiente de confirmación"
+                                      >
+                                        ⏳ Pendiente
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={`guest-status-pill confirmed ${g.confirmed === true ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { confirmed: true })}
+                                        title="Asistirá al evento"
+                                      >
+                                        ✅ Asistirá
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={`guest-status-pill declined ${g.confirmed === false ? 'active' : ''}`}
+                                        onClick={() => handleUpdateGuest(idx, { confirmed: false })}
+                                        title="No asistirá"
+                                      >
+                                        ❌ No asistirá
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Quick Add Guest Box */}
+                      <div className="guest-builder-card">
+                        <div className="guest-builder-title">
+                          <Plus size={15} />
+                          <span>Agregar integrante a esta familia</span>
+                        </div>
+                        <div className="guest-builder-grid">
+                          <div className="guest-builder-input-col">
+                            <input
+                              type="text"
+                              className="rsvp-modern-input"
+                              placeholder="Nombre completo (ej. Mariana Morales)..."
+                              value={tempGuestName}
+                              onChange={(e) => setTempGuestName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddTempGuest();
+                                }
+                              }}
+                            />
+                            <span className="guest-builder-hint">Presiona Enter para agregar rápidamente</span>
+                          </div>
+
+                          <div className="guest-builder-controls">
+                            <div className="guest-mini-toggle">
+                              <button
+                                type="button"
+                                className={`guest-mini-btn ${tempGuestType === 'adult' ? 'active' : ''}`}
+                                onClick={() => {
+                                  setTempGuestType('adult');
+                                  setTempGuestMeal(MEAL_ADULT);
+                                }}
+                              >
+                                👨 Adulto
+                              </button>
+                              <button
+                                type="button"
+                                className={`guest-mini-btn ${tempGuestType === 'child' ? 'active' : ''}`}
+                                onClick={() => {
+                                  setTempGuestType('child');
+                                  setTempGuestMeal(MEAL_CHILD);
+                                }}
+                              >
+                                👶 Niño
+                              </button>
+                            </div>
+
+                            <div className="guest-mini-toggle">
+                              <button
+                                type="button"
+                                className={`guest-mini-btn ${tempGuestMeal === MEAL_ADULT ? 'active' : ''}`}
+                                onClick={() => setTempGuestMeal(MEAL_ADULT)}
+                              >
+                                🍽️ Adulto
+                              </button>
+                              <button
+                                type="button"
+                                className={`guest-mini-btn ${tempGuestMeal === MEAL_CHILD ? 'active' : ''}`}
+                                onClick={() => setTempGuestMeal(MEAL_CHILD)}
+                              >
+                                🍟 Niño
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleAddTempGuest(e)}
+                              className="btn-gold guest-builder-add-btn"
+                            >
+                              <Plus size={16} />
+                              Agregar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: NOTAS Y OBSERVACIONES */}
+                    <div className="rsvp-modal-section">
+                      <div className="rsvp-modal-section-title">
+                        <Info size={16} />
+                        <span>3. Notas, Alergias o Solicitudes Especiales</span>
+                      </div>
+                      <div style={{ marginBottom: 0 }}>
+                        <textarea
+                          id="manual-comments"
+                          className="rsvp-modern-textarea"
+                          placeholder="Alergias alimentarias, solicitudes de mesa, comentarios o notas de la familia..."
+                          value={newComments}
+                          onChange={(e) => setNewComments(e.target.value)}
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Sticky Footer */}
+                  <div className="rsvp-modal-footer">
+                    <div className="rsvp-footer-summary">
+                      <span>
+                        Total: <strong>{newGuestsList.length}</strong> {newGuestsList.length === 1 ? 'persona' : 'personas'} (
+                        {newGuestsList.filter(g => !g.isChild).length} adultos, {newGuestsList.filter(g => g.isChild).length} niños
+                      )
+                      </span>
+                      <span className="rsvp-footer-dot">·</span>
+                      <span>
+                        <strong style={{ color: '#15803d' }}>{newGuestsList.filter(g => g.confirmed === true).length}</strong> confirmados
+                      </span>
+                    </div>
+
+                    <div className="rsvp-footer-actions">
+                      <button
+                        type="button"
+                        onClick={resetRsvpForm}
+                        className="btn-outline"
+                      >
+                        Cancelar
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="btn-gold"
+                        disabled={rsvpAddLoading}
+                      >
+                        <Save size={16} />
+                        {rsvpAddLoading ? 'Guardando...' : editingRsvpId ? 'Guardar Cambios' : 'Guardar Familia'}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>

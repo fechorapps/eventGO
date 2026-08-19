@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Lock, LogOut, Download, Trash2, Search, Users, UserCheck, Baby, RefreshCw, Plus, Save, X, Edit, ChevronLeft, Calendar, MapPin, Gift, Phone, Info, Send, Link2, Church, Wine, ShoppingCart, Clock, Camera, UserX, Utensils, MessageSquare, Check, CheckCircle2, Mail } from 'lucide-react';
 import Link from 'next/link';
 import DateField from '@/components/DateField';
-import SeatingPlanner from '@/components/SeatingPlanner';
 import Pagination from '@/components/Pagination';
 import { paginateData } from '@/types/pagination';
 import { MEAL_ADULT, MEAL_CHILD, MEAL_EMOJI, MEAL_SHORT_LABEL, MealType, isMealMismatch, normalizeMealType } from '@/lib/meal';
@@ -110,7 +109,7 @@ export default function AdminPage() {
   const [loginLoading, setLoginLoading] = useState(false);
 
   // Application Modes: 'list', 'rsvp', 'form'
-  const [viewMode, setViewMode] = useState<'list' | 'rsvp' | 'form' | 'seating'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'rsvp' | 'form'>('list');
 
   // Events list states
   const [events, setEvents] = useState<Event[]>([]);
@@ -535,7 +534,7 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        setRsvps(rsvps.filter(r => r.id !== rsvpId));
+        setRsvps(current => current.filter(r => r.id !== rsvpId));
       } else {
         alert('Error al intentar eliminar la confirmación');
       }
@@ -688,51 +687,6 @@ export default function AdminPage() {
       alert('No se pudo actualizar el platillo del invitado.');
     } finally {
       setGuestMealLoadingId(null);
-    }
-  };
-
-  const handleMarkFamilyAsNotAttending = async (rsvp: RSVP) => {
-    if (!window.confirm(`¿Marcar a la familia "${rsvp.familyName}" como que no asistirán?`)) {
-      return;
-    }
-
-    setRsvpActionLoadingId(rsvp.id);
-    try {
-      const response = await fetch('/api/rsvp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          eventId: selectedEvent?.id,
-          familyName: rsvp.familyName,
-          invitedBy: rsvp.invitedBy,
-          invitationSent: rsvp.invitationSent,
-          contactPhone: rsvp.contactPhone,
-          comments: rsvp.comments,
-          guests: rsvp.guests.map((guest) => ({
-            name: guest.name,
-            isChild: guest.isChild,
-            mealType: guest.mealType,
-            confirmed: false,
-          })),
-          rsvpId: rsvp.id,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'No fue posible marcar la familia como no asistirá.');
-      }
-
-      if (selectedEvent) {
-        await fetchRsvps(selectedEvent.id);
-      }
-    } catch (error) {
-      console.error(error);
-      alert('No se pudo marcar la familia como no asistirá.');
-    } finally {
-      setRsvpActionLoadingId(null);
     }
   };
 
@@ -1154,7 +1108,6 @@ export default function AdminPage() {
   let totalGuests = 0;
   let totalConfirmed = 0;
   let totalDeclined = 0;
-  let totalPending = 0;
   let totalAdultsConfirmed = 0;
   let totalChildrenConfirmed = 0;
   let totalAdultsDeclined = 0;
@@ -1207,8 +1160,6 @@ export default function AdminPage() {
         } else {
           totalAdultsDeclined++;
         }
-      } else {
-        totalPending++;
       }
     });
   });
@@ -3063,26 +3014,6 @@ export default function AdminPage() {
               </div>
             );
           })()}
-        </section>
-      )}
-
-      {/* VIEW: SEATING / TABLE LAYOUT */}
-      {viewMode === 'seating' && selectedEvent && (
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.8rem' }}>
-            <div>
-              <span className="guest-type-tag">Acomodo de Mesas</span>
-              <h2 style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', marginTop: '0.2rem', margin: 0 }}>
-                {selectedEvent.celebrantName} - {selectedEvent.title}
-              </h2>
-            </div>
-            <button onClick={() => setViewMode('rsvp')} className="btn-outline">
-              <ChevronLeft size={16} />
-              Volver a Invitados
-            </button>
-          </div>
-
-          <SeatingPlanner eventId={selectedEvent.id} eventName={`${selectedEvent.celebrantName} — ${selectedEvent.title}`} />
         </section>
       )}
 

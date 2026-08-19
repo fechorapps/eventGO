@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ensureUniqueRsvpSlug } from '@/lib/rsvp-slug';
 import { normalizeMealType } from '@/lib/meal';
+import { verifyAdmin } from '@/lib/auth';
 
 interface RsvpGuestPayload {
   name: string;
@@ -20,12 +21,16 @@ interface RsvpRequestBody {
   comments?: string;
   guests?: RsvpGuestPayload[];
   rsvpId?: number;
+  // The family's own RSVP slug (from their private ?f=<slug> invite link) —
+  // proves this update came from that family, not a guessed sequential id.
+  // Not required when the caller is an authenticated admin.
+  rsvpSlug?: string;
 }
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as RsvpRequestBody;
-    const { eventId, slug, familyName, invitedBy, invitationSent, contactPhone, comments, guests, rsvpId } = body;
+    const { eventId, slug, familyName, invitedBy, invitationSent, contactPhone, comments, guests, rsvpId, rsvpSlug } = body;
 
     // Check if we are updating an existing RSVP (pre-registered or previously registered)
     if (rsvpId) {
@@ -41,6 +46,17 @@ export async function POST(request: Request) {
       });
 
       if (existingRsvp) {
+        // Anyone can guess a sequential rsvpId — only the family holding
+        // this RSVP's own private slug, or an authenticated admin, may
+        // overwrite it.
+        const isOwner = typeof rsvpSlug === 'string' && rsvpSlug.length > 0 && rsvpSlug === existingRsvp.slug;
+        if (!isOwner && !(await verifyAdmin())) {
+          return NextResponse.json(
+            { error: 'No autorizado para modificar esta confirmación.' },
+            { status: 401 }
+          );
+        }
+
         const slug = existingRsvp.slug || await ensureUniqueRsvpSlug(prisma.rsvp, familyName.trim());
         await prisma.$transaction([
           // 1. Delete existing guests for this RSVP to avoid duplicates

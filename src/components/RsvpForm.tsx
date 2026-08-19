@@ -21,6 +21,7 @@ interface RsvpGuest {
 
 interface SelectedRsvp {
   id: number;
+  slug: string | null;
   familyName: string;
   invitedBy?: string | null;
   contactPhone?: string | null;
@@ -189,6 +190,10 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
           comments: comments.trim(),
           guests,
           rsvpId: activeRsvp?.id || null,
+          // Proves this request came from the family's own private invite
+          // link (?f=<rsvp.slug>), not a guessed sequential id — checked
+          // server-side in the rsvpId branch of POST /api/rsvp.
+          rsvpSlug: activeRsvp?.slug,
         }),
       });
 

@@ -345,7 +345,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                         disabled={saving}
                         aria-pressed={guest.mealType === MEAL_ADULT}
                       >
-                        🍽️ Adulto
+                        🍽️ Menú
                       </button>
                       <button
                         type="button"
@@ -354,7 +354,7 @@ export default function RsvpForm({ eventId, slug, rsvpPhone, preloadedRsvp }: Rs
                         disabled={saving}
                         aria-pressed={guest.mealType === MEAL_CHILD}
                       >
-                        🍟 Niño
+                        🍔 Hamburguesa
                       </button>
                     </div>
                   </div>

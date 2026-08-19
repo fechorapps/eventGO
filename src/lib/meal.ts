@@ -8,18 +8,18 @@ export const MEAL_ADULT: MealType = 'ADULTO';
 export const MEAL_CHILD: MealType = 'NINO';
 
 export const MEAL_LABEL: Record<MealType, string> = {
-  ADULTO: 'Platillo adulto',
-  NINO: 'Platillo niño',
+  ADULTO: 'Menú',
+  NINO: 'Hamburguesa',
 };
 
 export const MEAL_SHORT_LABEL: Record<MealType, string> = {
-  ADULTO: 'Adulto',
-  NINO: 'Niño',
+  ADULTO: 'Menú',
+  NINO: 'Hamburguesa',
 };
 
 export const MEAL_EMOJI: Record<MealType, string> = {
   ADULTO: '🍽️',
-  NINO: '🍟',
+  NINO: '🍔',
 };
 
 // Normaliza lo que llegue del cliente o de la base. Si el invitado todavía no

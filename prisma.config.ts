@@ -3,6 +3,9 @@ import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  migrations: {
+    seed: "npx tsx prisma/seed.ts",
+  },
   datasource: {
     // env() from prisma/config throws when the variable is unset (e.g. during
     // `prisma generate` in the Docker image build), so read process.env directly.

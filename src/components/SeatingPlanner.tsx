@@ -780,7 +780,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                         {fam.guests.map(g => (
                           <span key={g.id} className="flex items-center gap-2">
                             {g.name} 
-                            {g.isChild && <span className="bg-blue-50 text-blue-600 text-[0.6rem] uppercase px-1.5 py-0.5 rounded-full font-bold">Niño</span>}
+                            {g.isChild && <span className="bg-blue-50 text-blue-600 text-[0.6rem] uppercase px-1.5 py-0.5 rounded-full font-bold">👶 Niño</span>}
                           </span>
                         ))}
                       </div>

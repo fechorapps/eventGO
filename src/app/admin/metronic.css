@@ -1,0 +1,93 @@
+/*
+ * Metronic (Keenthemes, licensed — Tailwind React "demo7") design tokens.
+ * Scoped to /admin only: this file is imported exclusively by
+ * src/app/admin/layout.tsx, so Next.js only loads it on admin routes and
+ * it never touches the public wedding pages, which keep their own tokens
+ * from src/app/tailwind.css.
+ */
+@import 'tailwindcss';
+
+:root {
+  /*
+   * Slate (not zinc/blue) to match the existing dashboard's own palette —
+   * .stat-card, .btn-gold's Metronic override, .search-input etc. in
+   * src/app/tailwind.css already use slate-900/500/400/300/200. --primary
+   * is slate-900 (#0f172a) to match .btn-gold's near-black, not Metronic's
+   * default blue-500, so the header and the rest of /admin read as one
+   * system instead of two.
+   */
+  --background: var(--color-white);
+  --foreground: var(--color-slate-900);
+  --card: var(--color-white);
+  --card-foreground: var(--color-slate-900);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-slate-900);
+  --primary: var(--color-slate-900);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-slate-100);
+  --secondary-foreground: var(--color-slate-900);
+  --muted: var(--color-slate-100);
+  --muted-foreground: var(--color-slate-500);
+  --accent: var(--color-slate-100);
+  --accent-foreground: var(--color-slate-900);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --mono: var(--color-slate-900);
+  --mono-foreground: var(--color-white);
+  --border: var(--color-slate-200);
+  --input: var(--color-slate-300);
+  --ring: var(--color-slate-400);
+  --radius: 0.625rem; /* 10px, matching .btn-gold/.btn-outline's radius */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-mono: var(--mono);
+  --color-mono-foreground: var(--mono-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@theme {
+  --text-2sm: 0.8125rem;
+  --text-2sm--line-height: calc(1.075 / 0.8125);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: calc(0.825 / 0.6875);
+}
+
+@layer base {
+  .metronic-scope,
+  .metronic-scope * {
+    border-color: var(--color-border);
+  }
+}

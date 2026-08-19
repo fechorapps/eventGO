@@ -145,6 +145,9 @@ model Guest {
   rsvpId    Int      @map("rsvp_id")
   name      String
   isChild   Boolean  @default(false) @map("is_child")
+  // Platillo que se le servirá: 'ADULTO' | 'NINO'. Es independiente de isChild
+  // porque hay adultos que prefieren el platillo de niño (y viceversa).
+  mealType  String   @default("ADULTO") @map("meal_type")
   confirmed Boolean? @default(true)
   createdAt DateTime @default(now()) @map("created_at")
 

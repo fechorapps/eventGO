@@ -793,6 +793,56 @@ h1, h2, h3, h4 {
   box-shadow: 0 2px 5px rgba(198, 89, 17, 0.2);
 }
 
+/* Elección de platillo. Va aparte de si el invitado es adulto o niño: hay
+   adultos que prefieren el platillo de niño, y la cocina cuenta por platillo. */
+.guest-meal-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.guest-meal-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.guest-meal-toggle {
+  display: flex;
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 30px;
+  overflow: hidden;
+  padding: 2px;
+}
+
+.guest-meal-toggle .meal-btn {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 0.32rem 0.7rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  color: var(--color-text-muted);
+}
+
+.guest-meal-toggle .meal-btn:hover {
+  color: var(--color-text-dark);
+}
+
+.guest-meal-toggle .meal-btn.active {
+  background: var(--color-gold-dark);
+  color: #FFFFFF;
+  box-shadow: 0 2px 5px rgba(85, 112, 140, 0.25);
+}
+
 .selection-indicator {
   display: inline-flex;
   align-items: center;
@@ -872,7 +922,7 @@ h1, h2, h3, h4 {
 /* Guest builder input row */
 .guest-builder-row {
   display: grid;
-  grid-template-columns: 2fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr auto;
   gap: 0.8rem;
   margin-bottom: 1.5rem;
 }
@@ -891,6 +941,124 @@ h1, h2, h3, h4 {
   font-family: var(--font-sans);
   font-size: 0.9rem;
   cursor: pointer;
+}
+
+/* Modal de alta / edición de familias en el panel */
+.rsvp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.rsvp-modal-card {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+.rsvp-modal-header {
+  padding: 1.3rem 1.8rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(to right, #faf8f5, #ffffff);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rsvp-modal-title {
+  font-size: 1.3rem;
+  color: var(--color-gold-dark);
+  margin: 0;
+  font-weight: 600;
+}
+
+.rsvp-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 3px 0 0 0;
+}
+
+.rsvp-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rsvp-modal-close:hover {
+  color: var(--color-text-dark);
+}
+
+/* El formulario ocupa todo el alto disponible para que el pie quede fijo
+   abajo y solo haga scroll el cuerpo. */
+.rsvp-modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.rsvp-modal-body {
+  padding: 1.5rem 1.8rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.rsvp-modal-footer {
+  padding: 1rem 1.8rem;
+  border-top: 1px solid #f1f5f9;
+  background-color: #faf8f5;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .rsvp-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .rsvp-modal-card {
+    max-height: 94vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .rsvp-modal-header,
+  .rsvp-modal-body,
+  .rsvp-modal-footer {
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+  }
+
+  .rsvp-modal-footer > .btn-gold,
+  .rsvp-modal-footer > .btn-outline {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 /* Admin Dashboard layout */
@@ -1862,6 +2030,11 @@ html {
   .guest-rsvp-toggle .toggle-btn {
     font-size: 0.85rem;
     padding: 0.7rem 1.1rem;
+  }
+
+  .guest-meal-toggle .meal-btn {
+    font-size: 0.8rem;
+    padding: 0.55rem 0.95rem;
   }
 
   .editorial-photo-stack {

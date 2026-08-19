@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin } from '@/lib/auth';
 import { ensureUniqueRsvpSlug } from '@/lib/rsvp-slug';
+import { normalizeMealType } from '@/lib/meal';
 
 export async function GET(request: Request) {
   try {
@@ -61,6 +62,7 @@ export async function GET(request: Request) {
         id: g.id,
         name: g.name,
         isChild: g.isChild,
+        mealType: g.mealType,
         confirmed: g.confirmed,
       })),
     }));
@@ -108,18 +110,31 @@ export async function PATCH(request: Request) {
 
     const body = await request.json();
 
-    // Check if we are updating a single guest's confirmation status
+    // Check if we are updating a single guest's confirmation status or the
+    // dish they will be served (platillo de adulto / de niño).
     if (body?.guestId !== undefined) {
       const guestId = Number(body.guestId);
       if (!Number.isInteger(guestId) || guestId <= 0) {
         return NextResponse.json({ error: 'ID de invitado inválido' }, { status: 400 });
       }
 
-      const confirmed = body.confirmed === null ? null : Boolean(body.confirmed);
+      const data: { confirmed?: boolean | null; mealType?: string } = {};
+
+      if (body.mealType !== undefined) {
+        data.mealType = normalizeMealType(body.mealType);
+      }
+
+      if (body.confirmed !== undefined) {
+        data.confirmed = body.confirmed === null ? null : Boolean(body.confirmed);
+      }
+
+      if (Object.keys(data).length === 0) {
+        return NextResponse.json({ error: 'No hay cambios que aplicar al invitado' }, { status: 400 });
+      }
 
       const guest = await prisma.guest.update({
         where: { id: guestId },
-        data: { confirmed },
+        data,
       });
 
       return NextResponse.json({
@@ -127,6 +142,7 @@ export async function PATCH(request: Request) {
         guest: {
           id: guest.id,
           confirmed: guest.confirmed,
+          mealType: guest.mealType,
         },
       });
     }

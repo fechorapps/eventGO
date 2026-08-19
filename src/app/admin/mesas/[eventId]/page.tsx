@@ -22,9 +22,9 @@ export default async function MesasPage({ params }: { params: Promise<{ eventId:
         <h2 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0, fontFamily: 'var(--font-sans)' }}>
           Acomodo de mesas — Evento #{eventId}
         </h2>
-        <Link href="/admin" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1.2rem', textDecoration: 'none' }}>
+        <Link href={`/admin/eventos/${eventId}`} className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1.2rem', textDecoration: 'none' }}>
           <ChevronLeft size={16} />
-          Volver a Administración
+          Volver a Invitados
         </Link>
       </div>
 

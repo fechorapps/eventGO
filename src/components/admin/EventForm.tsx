@@ -632,7 +632,7 @@ export default function EventForm(props: EventFormProps) {
                 </span>
               </div>
 
-              <div className="wiz-field-group">
+              <div className="wiz-field-group full">
                 <label className="wiz-field-label" htmlFor="form-date">Fecha y Hora del Evento *</label>
                 <DateField
                   id="form-date"
@@ -640,6 +640,14 @@ export default function EventForm(props: EventFormProps) {
                   value={formDate}
                   onChange={setFormDate}
                   required
+                  alwaysOpen
+                  accentColor="#0f172a"
+                  popoverStyle={{
+                    border: '1px solid #e2e8f0',
+                    background: '#ffffff',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+                    maxWidth: '360px',
+                  }}
                 />
               </div>
 
@@ -657,15 +665,18 @@ export default function EventForm(props: EventFormProps) {
 
               <div className="wiz-field-group">
                 <label className="wiz-field-label" htmlFor="form-rsvp-phone">Teléfono de WhatsApp para Confirmaciones</label>
-                <input
-                  id="form-rsvp-phone"
-                  type="tel"
-                  inputMode="tel"
-                  className="wiz-field-input"
-                  placeholder="Ej: +52 1 (55) 1234-5678"
-                  value={formRsvpPhone}
-                  onChange={(e) => setFormRsvpPhone(formatWhatsAppPhone(e.target.value))}
-                />
+                <div className="wiz-phone-wrap">
+                  <span className="wiz-phone-chip">MX</span>
+                  <input
+                    id="form-rsvp-phone"
+                    type="tel"
+                    inputMode="tel"
+                    className="wiz-field-input wiz-phone-input"
+                    placeholder="Ej: +52 1 (55) 1234-5678"
+                    value={formRsvpPhone}
+                    onChange={(e) => setFormRsvpPhone(formatWhatsAppPhone(e.target.value))}
+                  />
+                </div>
                 <span className="wiz-field-hint">
                   Número de WhatsApp al cual los invitados enviarán su comprobante automático.
                 </span>

@@ -13,6 +13,10 @@ interface DateFieldProps {
   onChange: (value: string) => void;
   withTime?: boolean;
   required?: boolean;
+  /** Renderiza el calendario expandido siempre, sin botón disparador. */
+  alwaysOpen?: boolean;
+  accentColor?: string;
+  popoverStyle?: React.CSSProperties;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -39,13 +43,16 @@ export default function DateField({
   onChange,
   withTime = false,
   required = false,
+  alwaysOpen = false,
+  accentColor = 'var(--color-primary)',
+  popoverStyle,
 }: DateFieldProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(alwaysOpen);
   const containerRef = useRef<HTMLDivElement>(null);
   const { date: selected, time } = parseValue(value);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || alwaysOpen) return;
     const onPointerDown = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -60,7 +67,7 @@ export default function DateField({
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open]);
+  }, [open, alwaysOpen]);
 
   let label = '';
   if (selected) {
@@ -79,19 +86,21 @@ export default function DateField({
 
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        id={id}
-        onClick={() => setOpen((o) => !o)}
-        className="rsvp-input flex cursor-pointer items-center justify-between gap-2 text-left"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <span className={label ? '' : 'text-[var(--text-muted)] opacity-70'}>
-          {label || 'Seleccionar fecha'}
-        </span>
-        <CalendarDays size={16} className="shrink-0 text-[var(--gold-medium)]" />
-      </button>
+      {!alwaysOpen && (
+        <button
+          type="button"
+          id={id}
+          onClick={() => setOpen((o) => !o)}
+          className="rsvp-input flex cursor-pointer items-center justify-between gap-2 text-left"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <span className={label ? '' : 'text-[var(--text-muted)] opacity-70'}>
+            {label || 'Seleccionar fecha'}
+          </span>
+          <CalendarDays size={16} className="shrink-0 text-[var(--gold-medium)]" />
+        </button>
+      )}
 
       {required && (
         <input
@@ -105,13 +114,20 @@ export default function DateField({
         />
       )}
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 rounded-[var(--radius-lg)] border border-[rgba(194,164,120,0.35)] bg-[var(--bg-secondary)] p-3 shadow-[var(--shadow-medium)]">
+      {(open || alwaysOpen) && (
+        <div
+          className={
+            alwaysOpen
+              ? 'rounded-[var(--radius-lg)] border border-[rgba(194,164,120,0.35)] bg-[var(--bg-secondary)] p-3'
+              : 'absolute left-0 top-full z-50 mt-2 rounded-[var(--radius-lg)] border border-[rgba(194,164,120,0.35)] bg-[var(--bg-secondary)] p-3 shadow-[var(--shadow-medium)]'
+          }
+          style={popoverStyle}
+        >
           <DayPicker
             mode="single"
             /* Inline porque la hoja de la librería redefine la variable en .rdp-root
                y anula cualquier valor heredado del contenedor. */
-            style={{ '--rdp-accent-color': 'var(--color-primary)' } as React.CSSProperties}
+            style={{ '--rdp-accent-color': accentColor } as React.CSSProperties}
             locale={es}
             captionLayout="dropdown"
             selected={selected}
@@ -119,7 +135,7 @@ export default function DateField({
             onSelect={(day) => {
               if (!day) return;
               onChange(buildValue(day, time, withTime));
-              if (!withTime) setOpen(false);
+              if (!withTime && !alwaysOpen) setOpen(false);
             }}
           />
           {withTime && (
@@ -138,13 +154,15 @@ export default function DateField({
                 }}
                 className="rounded border border-[rgba(194,164,120,0.35)] bg-transparent px-2 py-1 text-sm text-[var(--text-dark)]"
               />
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="cursor-pointer rounded bg-[var(--color-primary)] px-3 py-1 text-sm text-white"
-              >
-                Listo
-              </button>
+              {!alwaysOpen && (
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="cursor-pointer rounded bg-[var(--color-primary)] px-3 py-1 text-sm text-white"
+                >
+                  Listo
+                </button>
+              )}
             </div>
           )}
         </div>

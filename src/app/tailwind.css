@@ -1155,6 +1155,30 @@ h1, h2, h3, h4 {
   font-weight: 500;
 }
 
+.wiz-phone-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wiz-phone-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.wiz-phone-input {
+  flex: 1;
+}
+
 /* Guest Add Section */
 .guest-item-card {
   background: var(--color-bg-accent);

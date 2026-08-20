@@ -729,6 +729,19 @@ h1, h2, h3, h4 {
 }
 
 /* Theme Picker (admin EventForm — src/components/admin/ThemePicker.tsx) */
+.theme-picker-layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .theme-picker-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .theme-picker-categories {
   display: flex;
   flex-wrap: wrap;
@@ -749,19 +762,19 @@ h1, h2, h3, h4 {
 }
 
 .theme-picker-category-btn:hover {
-  border-color: var(--color-gold-dark);
+  border-color: #0f172a;
 }
 
 .theme-picker-category-btn.active {
-  background: var(--color-gold-dark);
+  background: #0f172a;
   color: #ffffff;
-  border-color: var(--color-gold-dark);
+  border-color: #0f172a;
 }
 
 .theme-picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.7rem;
 }
 
 .theme-picker-card {
@@ -783,8 +796,8 @@ h1, h2, h3, h4 {
 }
 
 .theme-picker-card.selected {
-  border-color: var(--color-gold-dark);
-  box-shadow: 0 0 0 3px rgba(85, 112, 140, 0.15);
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
 }
 
 .theme-picker-swatches {
@@ -808,7 +821,7 @@ h1, h2, h3, h4 {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--color-gold-dark);
+  background: #0f172a;
   color: #ffffff;
   margin-left: auto;
 }
@@ -817,6 +830,85 @@ h1, h2, h3, h4 {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-dark);
+}
+
+.theme-preview-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.theme-preview-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.theme-preview-browser {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.theme-preview-browser-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-preview-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.theme-preview-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 18px;
+  text-align: center;
+}
+
+.theme-preview-name {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 10px 0 6px;
+  line-height: 1.2;
+}
+
+.theme-preview-subtitle {
+  font-size: 0.72rem;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.theme-preview-btn {
+  display: inline-flex;
+  padding: 9px 20px;
+  border-radius: 20px;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.theme-preview-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 12px 0 0;
+  line-height: 1.5;
 }
 
 /* EventForm wizard (Metronic) — src/components/admin/EventForm.tsx.

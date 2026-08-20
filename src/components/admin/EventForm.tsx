@@ -766,7 +766,12 @@ export default function EventForm(props: EventFormProps) {
             <p className="wiz-card-hint">
               Elige la paleta de la invitación pública. No afecta este panel de administración.
             </p>
-            <ThemePicker value={formTheme} onChange={setFormTheme} />
+            <ThemePicker
+              value={formTheme}
+              onChange={setFormTheme}
+              celebrantName={formCelebrantName}
+              eventTitle={formTitle}
+            />
           </div>
         )}
 

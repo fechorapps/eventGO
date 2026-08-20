@@ -819,6 +819,342 @@ h1, h2, h3, h4 {
   color: var(--color-text-dark);
 }
 
+/* EventForm wizard (Metronic) — src/components/admin/EventForm.tsx.
+   Scoped via the .wiz- prefix; other admin surfaces (events list, RSVP
+   screens) keep their existing boutique classes untouched. */
+.wiz-head {
+  max-width: 860px;
+  margin: 0 auto 1.75rem;
+}
+
+.wiz-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.wiz-step-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.wiz-title {
+  font-family: var(--font-sans);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 18px 0;
+  letter-spacing: normal;
+}
+
+.wiz-progress {
+  display: flex;
+  gap: 6px;
+}
+
+.wiz-seg {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: #e2e8f0;
+}
+
+.wiz-seg.filled {
+  background: #0f172a;
+}
+
+.wiz-card {
+  max-width: 860px;
+  margin: 0 auto 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 2.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.wiz-card-hint {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0 0 1.2rem;
+}
+
+.wiz-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.wiz-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.wiz-field-group.full {
+  grid-column: 1 / -1;
+}
+
+.wiz-field-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+}
+
+.wiz-field-input,
+.wiz-field-textarea,
+.wiz-field-select {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  color: #0f172a;
+  background: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wiz-field-input:focus,
+.wiz-field-textarea:focus,
+.wiz-field-select:focus {
+  outline: none;
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+.wiz-field-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.wiz-field-input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.wiz-field-textarea {
+  height: auto;
+  min-height: 90px;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.wiz-field-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  display: block;
+}
+
+.wiz-field-error-text {
+  font-size: 0.68rem;
+  color: #dc2626;
+  display: block;
+  margin-top: 4px;
+}
+
+.wiz-subcard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.wiz-subcard-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  margin-bottom: 1rem;
+}
+
+.wiz-subcard-hint {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: -0.5rem 0 1rem;
+}
+
+.wiz-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+
+.wiz-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.wiz-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wiz-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0.6rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.wiz-store-badge {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  color: #ffffff;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.wiz-remove-btn {
+  background: transparent;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+}
+
+.wiz-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 10px;
+  border: none;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wiz-btn-primary:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+.wiz-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wiz-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wiz-btn-outline:hover:not(:disabled) {
+  border-color: #0f172a;
+  color: #0f172a;
+}
+
+.wiz-btn-outline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wiz-btn-outline-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wiz-btn-outline-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.wiz-thumb {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.wiz-thumb-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+  background: rgba(220, 38, 38, 0.92);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+.wiz-footer {
+  max-width: 860px;
+  margin: 0.5rem auto 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wiz-error {
+  max-width: 860px;
+  margin: 0 auto 1rem;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 /* Guest Add Section */
 .guest-item-card {
   background: var(--color-bg-accent);

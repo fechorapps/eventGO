@@ -3,13 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, Plus, Save, Clock, Church, Wine, ShoppingCart, Camera, Gift } from 'lucide-react';
+import { Trash2, Plus, Save, Clock, Church, Wine, ShoppingCart, Camera, Gift, ChevronLeft, ChevronRight } from 'lucide-react';
 import DateField from '@/components/DateField';
 import ThemePicker from '@/components/admin/ThemePicker';
 import { DEFAULT_THEME_ID } from '@/lib/themes';
 import type { Event, TempItineraryInput, TempRegistryInput } from '@/types/admin';
 
 type EventFormProps = { mode: 'create' } | { mode: 'edit'; eventId: number };
+
+const STEPS = [
+  'Datos Principales',
+  'Apariencia',
+  'Familiares',
+  'Ubicaciones del Evento',
+  'Mesa de Regalos y Plazos',
+  'Vestimenta e Itinerario',
+  'Galería de Fotos',
+  'Fondos Parametrizados',
+];
 
 export default function EventForm(props: EventFormProps) {
   const router = useRouter();
@@ -21,6 +32,7 @@ export default function EventForm(props: EventFormProps) {
 
   const [initLoading, setInitLoading] = useState(isEdit);
   const [notFound, setNotFound] = useState(false);
+  const [step, setStep] = useState(0);
 
   const [formSlug, setFormSlug] = useState('');
   const [formTitle, setFormTitle] = useState('Bautizo');
@@ -374,6 +386,67 @@ export default function EventForm(props: EventFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Per-step gate for "Siguiente" — a subset of handleSaveEvent's full
+  // validation, scoped to what that particular step can actually get
+  // wrong. handleSaveEvent's own checks stay the authoritative safety
+  // net at submit time (unchanged below), so this only needs to catch
+  // the common "forgot a required field" case early.
+  function validateStep(n: number): string | null {
+    switch (n) {
+      case 0:
+        if (!formCelebrantName.trim() || !formTitle.trim() || !formSlug.trim() || !formDate) {
+          return 'Completa el celebrante, título, identificador URL y fecha del evento.';
+        }
+        if (!/^[a-z0-9-]+$/.test(formSlug.trim().toLowerCase())) {
+          return 'El identificador URL (slug) solo puede contener letras minúsculas, números y guiones (ej. bautizo-gael).';
+        }
+        return null;
+      case 3:
+        if (formChurchMapsUrl && !isValidUrl(formChurchMapsUrl)) {
+          return 'Verifica el enlace de la ubicación de la Ceremonia (debe ser una URL válida, ej: https://...).';
+        }
+        if (!formLocationsAreSame && formHallMapsUrl && !isValidUrl(formHallMapsUrl)) {
+          return 'Verifica el enlace de la ubicación de la Recepción (debe ser una URL válida, ej: https://...).';
+        }
+        return null;
+      case 4: {
+        const clabe = formGiftBankClabe.replace(/\D/g, '');
+        if (clabe && clabe.length !== 18) {
+          return 'La CLABE interbancaria debe tener 18 dígitos.';
+        }
+        return null;
+      }
+      case 7:
+        if (formHeroBackgroundUrl && !isValidUrl(formHeroBackgroundUrl)) {
+          return 'Verifica la foto de fondo principal.';
+        }
+        if (formDetailsBackgroundUrl && !isValidUrl(formDetailsBackgroundUrl)) {
+          return 'Verifica la foto de fondo para detalles.';
+        }
+        if (formRsvpBackgroundUrl && !isValidUrl(formRsvpBackgroundUrl)) {
+          return 'Verifica la foto de fondo para RSVP.';
+        }
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  const goNext = () => {
+    const error = validateStep(step);
+    if (error) {
+      setFormError(error);
+      return;
+    }
+    setFormError('');
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
+
+  const goBack = () => {
+    setFormError('');
+    setStep((s) => Math.max(s - 1, 0));
+  };
+
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -483,8 +556,8 @@ export default function EventForm(props: EventFormProps) {
   if (isEdit && notFound) {
     return (
       <div className="admin-container" style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-        <h2 style={{ color: 'var(--gold-dark)' }}>Evento no encontrado</h2>
-        <Link href="/admin" className="btn-outline" style={{ marginTop: '1rem', display: 'inline-flex' }}>Volver a Eventos</Link>
+        <h2 style={{ color: '#0f172a', fontFamily: 'var(--font-sans)', letterSpacing: 'normal' }}>Evento no encontrado</h2>
+        <Link href="/admin" className="wiz-btn-outline" style={{ marginTop: '1rem', display: 'inline-flex' }}>Volver a Eventos</Link>
       </div>
     );
   }
@@ -499,26 +572,29 @@ export default function EventForm(props: EventFormProps) {
 
   return (
     <div className="admin-container">
-      {/* VIEW: CREATE OR EDIT EVENT PARAMETERS FORM */}
-        <section className="section-card" style={{ padding: '2.5rem clamp(1rem, 5vw, 3rem)', textAlign: 'left', borderRadius: '16px' }}>
-          <h2 style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', borderBottom: '1px solid rgba(212,175,55,0.15)', paddingBottom: '0.8rem', marginBottom: '2rem' }}>
-            {eventFormId ? 'Configuración de Evento' : 'Registrar Nuevo Evento'}
-          </h2>
+      <div className="wiz-head">
+        <div className="wiz-eyebrow">{eventFormId ? 'Configuración de Evento' : 'Registrar Nuevo Evento'}</div>
+        <div className="wiz-step-label">Paso {step + 1} de {STEPS.length}</div>
+        <h2 className="wiz-title">{STEPS[step]}</h2>
+        <div className="wiz-progress">
+          {STEPS.map((label, i) => (
+            <div key={label} className={`wiz-seg ${i <= step ? 'filled' : ''}`} />
+          ))}
+        </div>
+      </div>
 
-          <form onSubmit={handleSaveEvent}>
-            
-            {/* --- SECCIÓN 1: DATOS BÁSICOS --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              1. Datos Principales del Evento
-            </h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-celebrant">Nombre del Celebrante *</label>
+      <form onSubmit={handleSaveEvent}>
+
+        {/* --- PASO 1: DATOS PRINCIPALES --- */}
+        {step === 0 && (
+          <div className="wiz-card">
+            <div className="wiz-field-grid">
+              <div className="wiz-field-group">
+                <label className="wiz-field-label" htmlFor="form-celebrant">Nombre del Celebrante *</label>
                 <input
                   id="form-celebrant"
                   type="text"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: Mateo Alexander"
                   value={formCelebrantName}
                   onChange={(e) => setFormCelebrantName(e.target.value)}
@@ -526,12 +602,12 @@ export default function EventForm(props: EventFormProps) {
                 />
               </div>
 
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-title">Título del Evento *</label>
+              <div className="wiz-field-group">
+                <label className="wiz-field-label" htmlFor="form-title">Título del Evento *</label>
                 <input
                   id="form-title"
                   type="text"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: Mi Bautizo, Boda, XV Años"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
@@ -539,25 +615,25 @@ export default function EventForm(props: EventFormProps) {
                 />
               </div>
 
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-slug">Identificador URL (Slug) *</label>
+              <div className="wiz-field-group">
+                <label className="wiz-field-label" htmlFor="form-slug">Identificador URL (Slug) *</label>
                 <input
                   id="form-slug"
                   type="text"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: bautizo-gael (minúsculas y guiones)"
                   value={formSlug}
                   onChange={(e) => setFormSlug(e.target.value)}
                   required
                   disabled={!!eventFormId}
                 />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                <span className="wiz-field-hint">
                   El enlace público de la invitación será: <strong>/e/{formSlug || 'identificador'}</strong>
                 </span>
               </div>
 
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-date">Fecha y Hora del Evento *</label>
+              <div className="wiz-field-group">
+                <label className="wiz-field-label" htmlFor="form-date">Fecha y Hora del Evento *</label>
                 <DateField
                   id="form-date"
                   withTime
@@ -567,294 +643,290 @@ export default function EventForm(props: EventFormProps) {
                 />
               </div>
 
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-subtitle">Subtítulo o Lema Hero</label>
+              <div className="wiz-field-group">
+                <label className="wiz-field-label" htmlFor="form-subtitle">Subtítulo o Lema Hero</label>
                 <input
                   id="form-subtitle"
                   type="text"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: Nuestra Promesa de Amor o Bienvenidos"
                   value={formSubtitle}
                   onChange={(e) => setFormSubtitle(e.target.value)}
                 />
               </div>
 
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-rsvp-phone">Teléfono de WhatsApp para Confirmaciones</label>
+              <div className="wiz-field-group">
+                <label className="wiz-field-label" htmlFor="form-rsvp-phone">Teléfono de WhatsApp para Confirmaciones</label>
                 <input
                   id="form-rsvp-phone"
                   type="tel"
                   inputMode="tel"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: +52 1 (55) 1234-5678"
                   value={formRsvpPhone}
                   onChange={(e) => setFormRsvpPhone(formatWhatsAppPhone(e.target.value))}
                 />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                <span className="wiz-field-hint">
                   Número de WhatsApp al cual los invitados enviarán su comprobante automático.
                 </span>
               </div>
             </div>
 
-            <div className="rsvp-form-group" style={{ marginBottom: '2.5rem' }}>
-              <label className="rsvp-label" htmlFor="form-quote">Frase de Bienvenida / Cita</label>
+            <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+              <label className="wiz-field-label" htmlFor="form-quote">Frase de Bienvenida / Cita</label>
               <textarea
                 id="form-quote"
-                className="rsvp-input"
+                className="wiz-field-textarea"
                 placeholder="Escribe una linda frase que se mostrará en la cabecera de la invitación..."
                 value={formQuote}
                 onChange={(e) => setFormQuote(e.target.value)}
-                style={{ minHeight: '60px', resize: 'vertical' }}
               />
             </div>
+          </div>
+        )}
 
-            {/* --- SECCIÓN: APARIENCIA --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              Apariencia
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>
+        {/* --- PASO 2: APARIENCIA --- */}
+        {step === 1 && (
+          <div className="wiz-card">
+            <p className="wiz-card-hint">
               Elige la paleta de la invitación pública. No afecta este panel de administración.
             </p>
-            <div style={{ marginBottom: '2.5rem' }}>
-              <ThemePicker value={formTheme} onChange={setFormTheme} />
-            </div>
+            <ThemePicker value={formTheme} onChange={setFormTheme} />
+          </div>
+        )}
 
-            {/* --- SECCIÓN 2: PADRES Y PADRINOS --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              2. Familiares (Padres y Padrinos)
-            </h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-parents">Nombres de los Padres (separados por comas)</label>
+        {/* --- PASO 3: FAMILIARES --- */}
+        {step === 2 && (
+          <div className="wiz-card">
+            <div className="wiz-field-grid" style={{ marginBottom: 0 }}>
+              <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+                <label className="wiz-field-label" htmlFor="form-parents">Nombres de los Padres (separados por comas)</label>
                 <input
                   id="form-parents"
                   type="text"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: Sofía Mendoza Pérez, Alejandro Ruiz Domínguez"
                   value={formParents}
                   onChange={(e) => setFormParents(e.target.value)}
                 />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                <span className="wiz-field-hint">
                   Aparecerán listados bajo la sección &ldquo;Mis Padres&rdquo;.
                 </span>
               </div>
 
-              <div className="rsvp-form-group">
-                <label className="rsvp-label" htmlFor="form-godparents">Nombres de los Padrinos (separados por comas)</label>
+              <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+                <label className="wiz-field-label" htmlFor="form-godparents">Nombres de los Padrinos (separados por comas)</label>
                 <input
                   id="form-godparents"
                   type="text"
-                  className="rsvp-input"
+                  className="wiz-field-input"
                   placeholder="Ej: María Ruiz Domínguez, Carlos Mendoza Pérez"
                   value={formGodparents}
                   onChange={(e) => setFormGodparents(e.target.value)}
                 />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                <span className="wiz-field-hint">
                   Aparecerán listados bajo la sección &ldquo;Mis Padrinos&rdquo;.
                 </span>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* --- SECCIÓN 3: UBICACIONES --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              3. Ubicaciones del Evento
-            </h3>
-
+        {/* --- PASO 4: UBICACIONES --- */}
+        {step === 3 && (
+          <div className="wiz-card">
             <fieldset style={{ border: 0, padding: 0, margin: '0 0 1.25rem' }}>
-              <legend className="rsvp-label" style={{ marginBottom: '0.65rem' }}>¿Dónde serán la ceremonia y la recepción?</legend>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+              <legend className="wiz-field-label" style={{ marginBottom: '0.65rem' }}>¿Dónde serán la ceremonia y la recepción?</legend>
+              <div className="wiz-radio-row">
+                <label className="wiz-radio-label">
                   <input
                     type="radio"
                     name="event-locations"
                     checked={formLocationsAreSame}
                     onChange={() => setFormLocationsAreSame(true)}
-                    style={{ accentColor: '#D4AF37', cursor: 'pointer' }}
+                    style={{ accentColor: '#0f172a', cursor: 'pointer' }}
                   />
                   En el mismo lugar
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                <label className="wiz-radio-label">
                   <input
                     type="radio"
                     name="event-locations"
                     checked={!formLocationsAreSame}
                     onChange={() => setFormLocationsAreSame(false)}
-                    style={{ accentColor: '#D4AF37', cursor: 'pointer' }}
+                    style={{ accentColor: '#0f172a', cursor: 'pointer' }}
                   />
                   En lugares diferentes
                 </label>
               </div>
             </fieldset>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
-              
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem' }}>
+
               {/* Iglesia */}
-              <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Church size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />{formLocationsAreSame ? 'Ceremonia y recepción' : 'Ceremonia / Iglesia'}</h4>
+              <div className="wiz-subcard">
+                <h4 className="wiz-subcard-title"><Church size={15} />{formLocationsAreSame ? 'Ceremonia y recepción' : 'Ceremonia / Iglesia'}</h4>
                 {formLocationsAreSame && (
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '-0.5rem 0 1rem' }}>
+                  <p className="wiz-subcard-hint">
                     Esta ubicación se mostrará una sola vez en la invitación.
                   </p>
                 )}
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="church-name">{formLocationsAreSame ? 'Nombre del lugar' : 'Nombre del Templo / Iglesia'}</label>
-                  <input id="church-name" type="text" className="rsvp-input" placeholder={formLocationsAreSame ? 'Ej: Salón Jardín de las Luces' : 'Ej: Parroquia de San Francisco'} value={formChurchName} onChange={(e) => setFormChurchName(e.target.value)} />
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="church-name">{formLocationsAreSame ? 'Nombre del lugar' : 'Nombre del Templo / Iglesia'}</label>
+                  <input id="church-name" type="text" className="wiz-field-input" placeholder={formLocationsAreSame ? 'Ej: Salón Jardín de las Luces' : 'Ej: Parroquia de San Francisco'} value={formChurchName} onChange={(e) => setFormChurchName(e.target.value)} />
                 </div>
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="church-time">{formLocationsAreSame ? 'Hora de la ceremonia' : 'Hora específica'}</label>
-                  <input id="church-time" type="text" className="rsvp-input" placeholder="Ej: 12:00 PM" value={formChurchTime} onChange={(e) => setFormChurchTime(e.target.value)} />
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="church-time">{formLocationsAreSame ? 'Hora de la ceremonia' : 'Hora específica'}</label>
+                  <input id="church-time" type="text" className="wiz-field-input" placeholder="Ej: 12:00 PM" value={formChurchTime} onChange={(e) => setFormChurchTime(e.target.value)} />
                 </div>
                 {formLocationsAreSame && (
-                  <div className="rsvp-form-group">
-                    <label className="rsvp-label" htmlFor="shared-hall-time">Hora de la recepción (opcional)</label>
-                    <input id="shared-hall-time" type="text" className="rsvp-input" placeholder="Ej: 2:00 PM" value={formHallTime} onChange={(e) => setFormHallTime(e.target.value)} />
+                  <div className="wiz-field-group">
+                    <label className="wiz-field-label" htmlFor="shared-hall-time">Hora de la recepción (opcional)</label>
+                    <input id="shared-hall-time" type="text" className="wiz-field-input" placeholder="Ej: 2:00 PM" value={formHallTime} onChange={(e) => setFormHallTime(e.target.value)} />
                   </div>
                 )}
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="church-address">Dirección completa</label>
-                  <input id="church-address" type="text" className="rsvp-input" placeholder="Calle, Número, Colonia, CP" value={formChurchAddress} onChange={(e) => setFormChurchAddress(e.target.value)} />
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="church-address">Dirección completa</label>
+                  <input id="church-address" type="text" className="wiz-field-input" placeholder="Calle, Número, Colonia, CP" value={formChurchAddress} onChange={(e) => setFormChurchAddress(e.target.value)} />
                 </div>
-                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
-                  <label className="rsvp-label" htmlFor="church-maps">Enlace de Google Maps / Waze</label>
-                  <input 
-                    id="church-maps" 
-                    type="text" 
-                    className="rsvp-input" 
-                    placeholder="https://maps.google.com/..." 
-                    value={formChurchMapsUrl} 
-                    onChange={(e) => setFormChurchMapsUrl(e.target.value)} 
+                <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+                  <label className="wiz-field-label" htmlFor="church-maps">Enlace de Google Maps / Waze</label>
+                  <input
+                    id="church-maps"
+                    type="text"
+                    className={`wiz-field-input ${formChurchMapsUrl && !isValidUrl(formChurchMapsUrl) ? 'error' : ''}`}
+                    placeholder="https://maps.google.com/..."
+                    value={formChurchMapsUrl}
+                    onChange={(e) => setFormChurchMapsUrl(e.target.value)}
                     onBlur={(e) => setFormChurchMapsUrl(ensureHttp(e.target.value))}
-                    style={{ borderColor: formChurchMapsUrl && !isValidUrl(formChurchMapsUrl) ? '#ff4d4d' : 'rgba(212, 175, 55, 0.2)' }}
                   />
                   {formChurchMapsUrl && !isValidUrl(formChurchMapsUrl) && (
-                    <span style={{ fontSize: '0.65rem', color: '#ff4d4d', display: 'block', marginTop: '4px' }}>Formato de enlace incorrecto (debe incluir http:// o https://)</span>
+                    <span className="wiz-field-error-text">Formato de enlace incorrecto (debe incluir http:// o https://)</span>
                   )}
                 </div>
               </div>
 
               {/* Salón */}
-              {!formLocationsAreSame && <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Wine size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Recepción / Salón</h4>
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="hall-name">Nombre del Salón o Jardín</label>
-                  <input id="hall-name" type="text" className="rsvp-input" placeholder="Ej: Jardín de las Luces" value={formHallName} onChange={(e) => setFormHallName(e.target.value)} />
+              {!formLocationsAreSame && <div className="wiz-subcard">
+                <h4 className="wiz-subcard-title"><Wine size={15} />Recepción / Salón</h4>
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="hall-name">Nombre del Salón o Jardín</label>
+                  <input id="hall-name" type="text" className="wiz-field-input" placeholder="Ej: Jardín de las Luces" value={formHallName} onChange={(e) => setFormHallName(e.target.value)} />
                 </div>
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="hall-time">Hora específica</label>
-                  <input id="hall-time" type="text" className="rsvp-input" placeholder="Ej: 2:00 PM" value={formHallTime} onChange={(e) => setFormHallTime(e.target.value)} />
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="hall-time">Hora específica</label>
+                  <input id="hall-time" type="text" className="wiz-field-input" placeholder="Ej: 2:00 PM" value={formHallTime} onChange={(e) => setFormHallTime(e.target.value)} />
                 </div>
-                <div className="rsvp-form-group">
-                  <label className="rsvp-label" htmlFor="hall-address">Dirección completa</label>
-                  <input id="hall-address" type="text" className="rsvp-input" placeholder="Calle, Número, Colonia, CP" value={formHallAddress} onChange={(e) => setFormHallAddress(e.target.value)} />
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="hall-address">Dirección completa</label>
+                  <input id="hall-address" type="text" className="wiz-field-input" placeholder="Calle, Número, Colonia, CP" value={formHallAddress} onChange={(e) => setFormHallAddress(e.target.value)} />
                 </div>
-                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
-                  <label className="rsvp-label" htmlFor="hall-maps">Enlace de Google Maps / Waze</label>
-                  <input 
-                    id="hall-maps" 
-                    type="text" 
-                    className="rsvp-input" 
-                    placeholder="https://maps.google.com/..." 
-                    value={formHallMapsUrl} 
-                    onChange={(e) => setFormHallMapsUrl(e.target.value)} 
+                <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+                  <label className="wiz-field-label" htmlFor="hall-maps">Enlace de Google Maps / Waze</label>
+                  <input
+                    id="hall-maps"
+                    type="text"
+                    className={`wiz-field-input ${formHallMapsUrl && !isValidUrl(formHallMapsUrl) ? 'error' : ''}`}
+                    placeholder="https://maps.google.com/..."
+                    value={formHallMapsUrl}
+                    onChange={(e) => setFormHallMapsUrl(e.target.value)}
                     onBlur={(e) => setFormHallMapsUrl(ensureHttp(e.target.value))}
-                    style={{ borderColor: formHallMapsUrl && !isValidUrl(formHallMapsUrl) ? '#ff4d4d' : 'rgba(212, 175, 55, 0.2)' }}
                   />
                   {formHallMapsUrl && !isValidUrl(formHallMapsUrl) && (
-                    <span style={{ fontSize: '0.65rem', color: '#ff4d4d', display: 'block', marginTop: '4px' }}>Formato de enlace incorrecto (debe incluir http:// o https://)</span>
+                    <span className="wiz-field-error-text">Formato de enlace incorrecto (debe incluir http:// o https://)</span>
                   )}
                 </div>
               </div>}
             </div>
+          </div>
+        )}
 
-            {/* --- SECCIÓN 4: REGALOS Y CONFIRMACIÓN --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              4. Mesa de Regalos y Plazos
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
+        {/* --- PASO 5: MESA DE REGALOS Y PLAZOS --- */}
+        {step === 4 && (
+          <div className="wiz-card">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem' }}>
               {/* Mesa de Regalos */}
-              <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Gift size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Detalles de Regalos</h4>
-                
-                <div className="rsvp-form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="wiz-subcard">
+                <h4 className="wiz-subcard-title"><Gift size={15} />Detalles de Regalos</h4>
+
+                <div className="wiz-checkbox-row" style={{ marginBottom: '1.25rem' }}>
                   <input
                     id="gift-envelope"
                     type="checkbox"
                     checked={formGiftEnvelope}
                     onChange={(e) => setFormGiftEnvelope(e.target.checked)}
-                    style={{ width: '16px', height: '16px', accentColor: '#D4AF37', cursor: 'pointer' }}
+                    style={{ width: '16px', height: '16px', accentColor: '#0f172a', cursor: 'pointer' }}
                   />
-                  <label htmlFor="gift-envelope" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dark)', cursor: 'pointer' }}>
+                  <label htmlFor="gift-envelope" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer' }}>
                     Habilitar Lluvia de Sobres (efectivo)
                   </label>
                 </div>
 
-                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
-                  <label className="rsvp-label" htmlFor="bank-name">Banco</label>
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="bank-name">Banco</label>
                   <input
                     id="bank-name"
                     type="text"
-                    className="rsvp-input"
+                    className="wiz-field-input"
                     placeholder="BBVA"
                     value={formGiftBankName}
                     onChange={(e) => setFormGiftBankName(e.target.value)}
                   />
                 </div>
 
-                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
-                  <label className="rsvp-label" htmlFor="bank-owner">Nombre del titular</label>
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="bank-owner">Nombre del titular</label>
                   <input
                     id="bank-owner"
                     type="text"
-                    className="rsvp-input"
+                    className="wiz-field-input"
                     placeholder="María Fernanda López"
                     value={formGiftBankOwner}
                     onChange={(e) => setFormGiftBankOwner(e.target.value)}
                   />
                 </div>
 
-                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
-                  <label className="rsvp-label" htmlFor="bank-clabe">CLABE Interbancaria</label>
+                <div className="wiz-field-group">
+                  <label className="wiz-field-label" htmlFor="bank-clabe">CLABE Interbancaria</label>
                   <input
                     id="bank-clabe"
                     type="text"
                     inputMode="numeric"
                     autoComplete="off"
                     maxLength={23}
-                    className="rsvp-input"
+                    className="wiz-field-input"
                     placeholder="000 000 000 000 000 000"
                     value={formGiftBankClabe}
                     onChange={(e) => setFormGiftBankClabe(formatClabe(e.target.value))}
                   />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                  <span className="wiz-field-hint">
                     Captura los 18 dígitos de tu CLABE.
                   </span>
                 </div>
 
                 {/* Catálogo de Mesa de Regalo (México) */}
-                <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-                  <h5 style={{ color: 'var(--gold-dark)', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600 }}><ShoppingCart size={14} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Catálogo de Mesa de Regalo (Liverpool, Sears, Amazon, etc.)</h5>
-                  
+                <div style={{ marginTop: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                  <h5 style={{ color: '#0f172a', fontSize: '0.9rem', marginBottom: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}><ShoppingCart size={14} />Catálogo de Mesa de Regalo (Liverpool, Sears, Amazon, etc.)</h5>
+
                   {/* Registry items list */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                     {giftRegistries.length === 0 ? (
                       <p style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No has agregado una mesa de regalo.</p>
                     ) : (
                       giftRegistries.map((reg, idx) => (
-                        <div key={idx} className="guest-item-card" style={{ padding: '0.5rem 0.8rem', marginBottom: 0 }}>
+                        <div key={idx} className="wiz-item-card">
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexGrow: 1 }}>
-                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: reg.storeName === 'Liverpool' ? '#e01e5a' : reg.storeName === 'Sears' ? '#0055a4' : reg.storeName === 'Amazon México' ? '#232f3e' : reg.storeName === 'El Palacio de Hierro' ? '#000000' : 'var(--gold-dark)', color: '#FFF', borderRadius: '4px', fontWeight: 'bold' }}>
+                            <span className="wiz-store-badge" style={{ background: reg.storeName === 'Liverpool' ? '#e01e5a' : reg.storeName === 'Sears' ? '#0055a4' : reg.storeName === 'Amazon México' ? '#232f3e' : reg.storeName === 'El Palacio de Hierro' ? '#000000' : '#0f172a' }}>
                               {reg.storeName}
                             </span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-dark)' }}>
+                            <span style={{ fontSize: '0.8rem', color: '#0f172a' }}>
                               {reg.registryNumber ? `#${reg.registryNumber}` : ''}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => setGiftRegistries(giftRegistries.filter((_, i) => i !== idx))}
-                            className="btn-remove-guest"
+                            className="wiz-remove-btn"
                             title="Eliminar"
                           >
                             <Trash2 size={14} />
@@ -865,13 +937,13 @@ export default function EventForm(props: EventFormProps) {
                   </div>
 
                   {/* Add registry builder */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(212,175,55,0.02)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.05)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: '#ffffff', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '0.5rem' }}>
                       <select
-                        className="guest-builder-select"
+                        className="wiz-field-select"
                         value={tempStoreName}
                         onChange={(e) => setTempStoreName(e.target.value)}
-                        style={{ padding: '0.6rem', fontSize: '0.8rem', minHeight: 'auto' }}
+                        style={{ height: '38px', fontSize: '0.8rem' }}
                       >
                         <option value="Liverpool">Liverpool</option>
                         <option value="Sears">Sears</option>
@@ -880,33 +952,28 @@ export default function EventForm(props: EventFormProps) {
                         <option value="Mercado Libre">Mercado Libre</option>
                         <option value="Otro">Otro / Personalizado</option>
                       </select>
-                      
+
                       <input
                         type="text"
-                        className="rsvp-input"
+                        className="wiz-field-input"
                         placeholder="Cód. Evento (ej: 508123)"
                         value={tempRegistryNumber}
                         onChange={(e) => setTempRegistryNumber(e.target.value)}
-                        style={{ padding: '0.6rem', fontSize: '0.8rem' }}
+                        style={{ height: '38px', fontSize: '0.8rem' }}
                       />
                     </div>
-                    
+
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <input
                         type="text"
-                        className="rsvp-input"
+                        className={`wiz-field-input ${tempRegistryUrl && !isValidUrl(tempRegistryUrl) ? 'error' : ''}`}
                         placeholder="Enlace URL (ej: https://...)"
                         value={tempRegistryUrl}
                         onChange={(e) => setTempRegistryUrl(e.target.value)}
                         onBlur={(e) => setTempRegistryUrl(ensureHttp(e.target.value))}
-                        style={{ 
-                          padding: '0.6rem', 
-                          fontSize: '0.8rem', 
-                          flexGrow: 1,
-                          borderColor: tempRegistryUrl && !isValidUrl(tempRegistryUrl) ? '#ff4d4d' : 'rgba(212, 175, 55, 0.2)'
-                        }}
+                        style={{ height: '38px', fontSize: '0.8rem', flexGrow: 1 }}
                       />
-                      
+
                       <button
                         type="button"
                         onClick={() => {
@@ -918,8 +985,7 @@ export default function EventForm(props: EventFormProps) {
                           setTempRegistryNumber('');
                           setTempRegistryUrl('');
                         }}
-                        className="btn-outline"
-                        style={{ padding: '0.5rem 0.8rem', fontSize: '0.8rem', borderRadius: '6px', height: 'auto', minWidth: 'auto' }}
+                        className="wiz-btn-outline-sm"
                         disabled={tempRegistryUrl !== '' && !isValidUrl(tempRegistryUrl)}
                       >
                         <Plus size={14} />
@@ -927,7 +993,7 @@ export default function EventForm(props: EventFormProps) {
                       </button>
                     </div>
                     {tempRegistryUrl && !isValidUrl(tempRegistryUrl) && (
-                      <span style={{ fontSize: '0.65rem', color: '#ff4d4d', display: 'block' }}>Formato de enlace incorrecto (debe incluir http:// o https://)</span>
+                      <span className="wiz-field-error-text">Formato de enlace incorrecto (debe incluir http:// o https://)</span>
                     )}
                   </div>
 
@@ -936,166 +1002,162 @@ export default function EventForm(props: EventFormProps) {
               </div>
 
               {/* Plazo de Confirmación */}
-              <div style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <h4 style={{ color: 'var(--gold-dark)', fontSize: '1rem', marginBottom: '1rem' }}><Clock size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />Límite de Confirmación</h4>
-                
-                <div className="rsvp-form-group" style={{ marginBottom: 0 }}>
-                  <label className="rsvp-label" htmlFor="form-deadline">Fecha límite para Confirmar Asistencia</label>
+              <div className="wiz-subcard" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <h4 className="wiz-subcard-title"><Clock size={15} />Límite de Confirmación</h4>
+
+                <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+                  <label className="wiz-field-label" htmlFor="form-deadline">Fecha límite para Confirmar Asistencia</label>
                   <DateField
                     id="form-deadline"
                     value={formRsvpDeadline}
                     onChange={setFormRsvpDeadline}
                   />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                  <span className="wiz-field-hint" style={{ marginTop: '6px', display: 'block' }}>
                     Esta fecha se mostrará en el formulario de confirmación público para apresurar a los invitados.
                   </span>
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* --- SECCIÓN 5: VESTIMENTA E ITINERARIO --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              5. Código de Vestimenta e Itinerario
-            </h3>
+        {/* --- PASO 6: VESTIMENTA E ITINERARIO --- */}
+        {step === 5 && (
+          <div className="wiz-card">
+            <div className="wiz-field-group">
+              <div className="wiz-checkbox-row" style={{ marginBottom: formDressCodeEnabled ? '0.7rem' : 0 }}>
+                <input
+                  id="dress-code-enabled"
+                  type="checkbox"
+                  checked={formDressCodeEnabled}
+                  onChange={(e) => setFormDressCodeEnabled(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#0f172a', cursor: 'pointer' }}
+                />
+                <label htmlFor="dress-code-enabled" className="wiz-field-label" style={{ marginBottom: 0, cursor: 'pointer' }}>
+                  Mostrar código de vestimenta
+                </label>
+              </div>
+              {formDressCodeEnabled && (
+                <input
+                  id="form-dresscode"
+                  type="text"
+                  className="wiz-field-input"
+                  placeholder="Ej: Formal (No blanco para invitados) o Semiformal"
+                  value={formDressCode}
+                  onChange={(e) => setFormDressCode(e.target.value)}
+                />
+              )}
+            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-              <div className="rsvp-form-group">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: formDressCodeEnabled ? '0.7rem' : 0 }}>
-                  <input
-                    id="dress-code-enabled"
-                    type="checkbox"
-                    checked={formDressCodeEnabled}
-                    onChange={(e) => setFormDressCodeEnabled(e.target.checked)}
-                    style={{ width: '16px', height: '16px', accentColor: '#D4AF37', cursor: 'pointer' }}
-                  />
-                  <label htmlFor="dress-code-enabled" className="rsvp-label" style={{ marginBottom: 0, cursor: 'pointer' }}>
-                    Mostrar código de vestimenta
-                  </label>
-                </div>
-                {formDressCodeEnabled && (
-                  <input
-                    id="form-dresscode"
-                    type="text"
-                    className="rsvp-input"
-                    placeholder="Ej: Formal (No blanco para invitados) o Semiformal"
-                    value={formDressCode}
-                    onChange={(e) => setFormDressCode(e.target.value)}
-                  />
+            {/* Itinerary Builder */}
+            <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+              <label className="wiz-field-label">Itinerario / Cronograma</label>
+
+              {/* List of steps */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.5rem 0 1.2rem' }}>
+                {itineraryItems.length === 0 ? (
+                  <p style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No has agregado ningún paso al itinerario.</p>
+                ) : (
+                  itineraryItems.map((item, idx) => (
+                    <div key={idx} className="wiz-item-card">
+                      <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexGrow: 1 }}>
+                        <span style={{ fontWeight: 600, color: '#0f172a', minWidth: '85px' }}>{item.time}</span>
+                        <span style={{ color: '#334155' }}>{item.activity}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const updated = [...itineraryItems];
+                            const temp = updated[idx];
+                            updated[idx] = updated[idx - 1];
+                            updated[idx - 1] = temp;
+                            setItineraryItems(updated);
+                          }}
+                          className="wiz-btn-outline-sm"
+                          style={{ padding: '0.3rem 0.5rem', height: 'auto' }}
+                          disabled={idx === 0}
+                          title="Subir"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (idx === itineraryItems.length - 1) return;
+                            const updated = [...itineraryItems];
+                            const temp = updated[idx];
+                            updated[idx] = updated[idx + 1];
+                            updated[idx + 1] = temp;
+                            setItineraryItems(updated);
+                          }}
+                          className="wiz-btn-outline-sm"
+                          style={{ padding: '0.3rem 0.5rem', height: 'auto' }}
+                          disabled={idx === itineraryItems.length - 1}
+                          title="Bajar"
+                        >
+                          ▼
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setItineraryItems(itineraryItems.filter((_, i) => i !== idx))}
+                          className="wiz-remove-btn"
+                          title="Eliminar paso"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
 
-              {/* Itinerary Builder */}
-              <div className="rsvp-form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="rsvp-label">Itinerario / Cronograma (UX interactiva)</label>
-                
-                {/* List of steps */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.2rem' }}>
-                  {itineraryItems.length === 0 ? (
-                    <p style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No has agregado ningún paso al itinerario.</p>
-                  ) : (
-                    itineraryItems.map((item, idx) => (
-                      <div key={idx} className="guest-item-card" style={{ padding: '0.6rem 1rem', marginBottom: 0 }}>
-                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexGrow: 1 }}>
-                          <span style={{ fontWeight: 600, color: 'var(--gold-dark)', minWidth: '85px' }}>{item.time}</span>
-                          <span style={{ color: 'var(--text-dark)' }}>{item.activity}</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (idx === 0) return;
-                              const updated = [...itineraryItems];
-                              const temp = updated[idx];
-                              updated[idx] = updated[idx - 1];
-                              updated[idx - 1] = temp;
-                              setItineraryItems(updated);
-                            }}
-                            className="btn-outline"
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderRadius: '4px', height: 'auto', minWidth: 'auto', color: idx === 0 ? '#ccc' : 'var(--gold-dark)', borderColor: idx === 0 ? '#eee' : 'var(--gold-medium)', cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
-                            disabled={idx === 0}
-                            title="Subir"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (idx === itineraryItems.length - 1) return;
-                              const updated = [...itineraryItems];
-                              const temp = updated[idx];
-                              updated[idx] = updated[idx + 1];
-                              updated[idx + 1] = temp;
-                              setItineraryItems(updated);
-                            }}
-                            className="btn-outline"
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderRadius: '4px', height: 'auto', minWidth: 'auto', color: idx === itineraryItems.length - 1 ? '#ccc' : 'var(--gold-dark)', borderColor: idx === itineraryItems.length - 1 ? '#eee' : 'var(--gold-medium)', cursor: idx === itineraryItems.length - 1 ? 'not-allowed' : 'pointer' }}
-                            disabled={idx === itineraryItems.length - 1}
-                            title="Bajar"
-                          >
-                            ▼
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setItineraryItems(itineraryItems.filter((_, i) => i !== idx))}
-                            className="btn-remove-guest"
-                            title="Eliminar paso"
-                            style={{ marginLeft: '5px' }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Form to add a new hito */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '0.8rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    className="rsvp-input"
-                    placeholder="Hora (ej: 12:00 PM)"
-                    value={newItineraryTime}
-                    onChange={(e) => setNewItineraryTime(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    className="rsvp-input"
-                    placeholder="Actividad (ej: Ceremonia Religiosa)"
-                    value={newItineraryActivity}
-                    onChange={(e) => setNewItineraryActivity(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!newItineraryTime.trim() || !newItineraryActivity.trim()) return;
-                      setItineraryItems([
-                        ...itineraryItems,
-                        { time: newItineraryTime.trim(), activity: newItineraryActivity.trim() }
-                      ]);
-                      setNewItineraryTime('');
-                      setNewItineraryActivity('');
-                    }}
-                    className="btn-outline"
-                    style={{ padding: '0.9rem 1.2rem', borderRadius: '8px' }}
-                  >
-                    <Plus size={16} />
-                    Agregar Paso
-                  </button>
-                </div>
+              {/* Form to add a new hito */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '0.8rem', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  className="wiz-field-input"
+                  placeholder="Hora (ej: 12:00 PM)"
+                  value={newItineraryTime}
+                  onChange={(e) => setNewItineraryTime(e.target.value)}
+                />
+                <input
+                  type="text"
+                  className="wiz-field-input"
+                  placeholder="Actividad (ej: Ceremonia Religiosa)"
+                  value={newItineraryActivity}
+                  onChange={(e) => setNewItineraryActivity(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newItineraryTime.trim() || !newItineraryActivity.trim()) return;
+                    setItineraryItems([
+                      ...itineraryItems,
+                      { time: newItineraryTime.trim(), activity: newItineraryActivity.trim() }
+                    ]);
+                    setNewItineraryTime('');
+                    setNewItineraryActivity('');
+                  }}
+                  className="wiz-btn-outline"
+                >
+                  <Plus size={16} />
+                  Agregar Paso
+                </button>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* --- SECCIÓN 6: GALERÍA DE FOTOS --- */}
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              6. Galería de Fotos (Se mezclan en scroll)
-            </h3>
+        {/* --- PASO 7: GALERÍA DE FOTOS --- */}
+        {step === 6 && (
+          <div className="wiz-card">
+            <div className="wiz-field-group" style={{ marginBottom: 0 }}>
+              <label className="wiz-field-label">Selecciona o sube fotos para tu evento</label>
 
-            <div className="rsvp-form-group" style={{ marginBottom: '2.5rem' }}>
-              <label className="rsvp-label">Selecciona o sube fotos para tu evento</label>
-              
               {/* File upload input */}
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', margin: '0.5rem 0 1.5rem' }}>
                 <input
                   type="file"
                   accept="image/*"
@@ -1119,10 +1181,10 @@ export default function EventForm(props: EventFormProps) {
                 />
                 <label
                   htmlFor="photo-file-input"
-                  className="btn-outline"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '0.8rem 1.5rem' }}
+                  className="wiz-btn-outline"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <Camera size={15} style={{ verticalAlign: '-2px', marginRight: '6px', display: 'inline-block' }} />{photoUploading ? 'Subiendo imágenes...' : 'Subir Fotos del Evento'}
+                  <Camera size={15} />{photoUploading ? 'Subiendo imágenes...' : 'Subir Fotos del Evento'}
                 </label>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Sube imágenes (.jpg, .png) que se mostrarán flotando y animadas en la galería al hacer scroll.
@@ -1135,7 +1197,7 @@ export default function EventForm(props: EventFormProps) {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
                   {uploadedPhotos.map((url, idx) => (
-                    <div key={idx} style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(212,175,55,0.2)', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                    <div key={idx} className="wiz-thumb">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button
@@ -1143,22 +1205,7 @@ export default function EventForm(props: EventFormProps) {
                         onClick={() => setUploadedPhotos((photos) => photos.filter((_, photoIndex) => photoIndex !== idx))}
                         aria-label={`Eliminar foto ${idx + 1}`}
                         title="Eliminar foto"
-                        style={{
-                          position: 'absolute',
-                          top: '6px',
-                          right: '6px',
-                          width: '28px',
-                          height: '28px',
-                          border: 0,
-                          borderRadius: '50%',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          color: '#fff',
-                          background: 'rgba(178, 34, 34, 0.92)',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.24)',
-                        }}
+                        className="wiz-thumb-remove"
                       >
                         <Trash2 size={14} aria-hidden="true" />
                       </button>
@@ -1167,12 +1214,13 @@ export default function EventForm(props: EventFormProps) {
                 </div>
               )}
             </div>
+          </div>
+        )}
 
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              7. Fondos Parametrizados
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
+        {/* --- PASO 8: FONDOS PARAMETRIZADOS --- */}
+        {step === 7 && (
+          <div className="wiz-card">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
               {[
                 {
                   key: 'hero',
@@ -1196,9 +1244,9 @@ export default function EventForm(props: EventFormProps) {
                   setValue: setFormRsvpBackgroundUrl,
                 },
               ].map((backgroundField) => (
-                <div key={backgroundField.key} style={{ background: 'rgba(212,175,55,0.02)', border: '1px solid rgba(212,175,55,0.1)', padding: '1rem', borderRadius: '12px' }}>
+                <div key={backgroundField.key} className="wiz-subcard" style={{ padding: '1rem' }}>
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--gold-dark)', marginBottom: '0.3rem' }}>{backgroundField.title}</div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '0.3rem' }}>{backgroundField.title}</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{backgroundField.description}</div>
                   </div>
 
@@ -1227,8 +1275,8 @@ export default function EventForm(props: EventFormProps) {
 
                   <label
                     htmlFor={`background-upload-${backgroundField.key}`}
-                    className="btn-outline"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '0.7rem 1rem', marginBottom: '0.9rem' }}
+                    className="wiz-btn-outline"
+                    style={{ cursor: 'pointer', marginBottom: '0.9rem' }}
                   >
                     {backgroundUploadingTarget === backgroundField.key ? 'Subiendo...' : 'Subir fondo'}
                   </label>
@@ -1236,12 +1284,12 @@ export default function EventForm(props: EventFormProps) {
                   {backgroundField.value ? (
                     <div>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={backgroundField.value} alt={backgroundField.title} style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.15)', marginBottom: '0.75rem' }} />
+                      <img src={backgroundField.value} alt={backgroundField.title} style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '0.75rem' }} />
                       <button
                         type="button"
                         onClick={() => backgroundField.setValue('')}
-                        className="btn-outline"
-                        style={{ padding: '0.55rem 0.8rem', width: '100%' }}
+                        className="wiz-btn-outline"
+                        style={{ width: '100%' }}
                       >
                         Quitar fondo
                       </button>
@@ -1254,37 +1302,61 @@ export default function EventForm(props: EventFormProps) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {/* Error Message */}
-            {formError && (
-              <p style={{ color: '#B22222', fontSize: '0.9rem', marginBottom: '1.5rem', fontWeight: 500 }}>
-                {formError}
-              </p>
-            )}
+        {/* Error Message */}
+        {formError && (
+          <p className="wiz-error">
+            {formError}
+          </p>
+        )}
 
-            {/* Save Controls */}
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
-              <button
-                type="button"
-                onClick={() => router.push('/admin')}
-                className="btn-outline"
-                disabled={formLoading}
-              >
-                Cancelar
-              </button>
+        {/* Wizard Navigation */}
+        <div className="wiz-footer">
+          {step === 0 ? (
+            <button
+              type="button"
+              onClick={() => router.push('/admin')}
+              className="wiz-btn-outline"
+              disabled={formLoading}
+            >
+              Cancelar
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={goBack}
+              className="wiz-btn-outline"
+              disabled={formLoading}
+            >
+              <ChevronLeft size={16} />
+              Atrás
+            </button>
+          )}
 
-              <button
-                type="submit"
-                className="btn-gold"
-                disabled={formLoading}
-              >
-                <Save size={16} />
-                {formLoading ? 'Guardando...' : 'Guardar Configuración de Evento'}
-              </button>
-            </div>
+          {step < STEPS.length - 1 ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="wiz-btn-primary"
+            >
+              Siguiente
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="wiz-btn-primary"
+              disabled={formLoading}
+            >
+              <Save size={16} />
+              {formLoading ? 'Guardando...' : 'Guardar Evento'}
+            </button>
+          )}
+        </div>
 
-          </form>
-        </section>
+      </form>
 
     </div>
   );

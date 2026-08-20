@@ -9,6 +9,7 @@ import { MapPin, Calendar, Clock, Gift, Heart, AlertCircle, Church, Wine, Shirt 
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/db';
+import { getTheme } from '@/lib/themes';
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
@@ -214,8 +215,25 @@ export default async function EventPage({ params, searchParams }: EventPageProps
   const parentsList = parseNames(event.parents);
   const godparentsList = parseNames(event.godparents);
 
+  // Per-event theming: resolve this event's chosen palette from the
+  // catalog (src/lib/themes.ts) and apply it as CSS custom-property
+  // overrides on the page's root wrapper. Everything downstream already
+  // reads var(--gold-dark) / var(--color-gold-medium) / etc. (both forms
+  // now alias to the same source — see the :root block in tailwind.css),
+  // so no other component needs to know a theme system exists.
+  const theme = getTheme(event.theme);
+  const themeStyle = {
+    '--color-gold-dark': theme.palette.primary,
+    '--color-gold-medium': theme.palette.accent,
+    '--color-gold-light': theme.palette.primaryLight,
+    '--color-color-primary': theme.palette.primary,
+    '--color-color-primary-dark': theme.palette.primaryDark,
+    '--color-color-primary-light': theme.palette.primaryLight,
+    '--color-gold-gradient': `linear-gradient(135deg, ${theme.palette.primary} 0%, ${theme.palette.accent} 50%, ${theme.palette.primaryDark} 100%)`,
+  } as React.CSSProperties;
+
   return (
-    <>
+    <div data-theme={event.theme} style={themeStyle}>
       {/* Background decorations */}
       <div className="bg-decorations">
         <div className="cloud cloud-1"></div>
@@ -691,6 +709,6 @@ export default async function EventPage({ params, searchParams }: EventPageProps
         </footer>
 
       </main>
-    </>
+    </div>
   );
 }

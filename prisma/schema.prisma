@@ -20,8 +20,9 @@ model Event {
 
   // Visual theme for the public invitation page — a key into the curated
   // catalog in src/lib/themes.ts (not a DB enum, so new themes don't need
-  // a migration). Defaults to today's existing look.
-  theme           String          @default("dorado-clasico")
+  // a migration). Defaults to today's existing look ("Olivos Serenos" —
+  // primary #55708C, accent #C2A478 — matches the current hardcoded palette).
+  theme           String          @default("bautizo-olivos-serenos")
 
   // Parents & Godparents
   parents         String?         // Format: "Sofia Mendoza, Alejandro Ruiz"

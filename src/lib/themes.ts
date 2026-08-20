@@ -43,13 +43,13 @@ const t = (
 export const THEMES: EventTheme[] = [
   // ===== Bautizo =====
   t('bautizo-olivos-serenos', 'Bautizo', 'Olivos Serenos', 'cruz-olivos', '#55708C', '#394E63', '#E9EEF3', '#C2A478'),
-  t('bautizo-cielo-de-paz', 'Bautizo', 'Cielo de Paz', 'paloma', '#4A7A96', '#33566B', '#E7F0F5', '#C2A478'),
+  t('bautizo-cielo-de-paz', 'Bautizo', 'Cielo de Paz', 'paloma', '#497893', '#33566B', '#E7F0F5', '#C2A478'),
   t('bautizo-luz-sagrada', 'Bautizo', 'Luz Sagrada', 'cruz-olivos', '#8A6D3B', '#6B532B', '#F5EFE3', '#C9A96A'),
   t('bautizo-agua-bendita', 'Bautizo', 'Agua Bendita', 'concha', '#3E7C7B', '#2C5958', '#E5F1F1', '#C2A478'),
   t('bautizo-rosa-inocencia', 'Bautizo', 'Rosa Inocencia', 'paloma', '#A45D6E', '#7E4553', '#F7EBEE', '#C9A96A'),
   t('bautizo-salvia-antigua', 'Bautizo', 'Salvia Antigua', 'cruz-olivos', '#5A6B54', '#3E4B3A', '#EBECE8', '#C2A478'),
   t('bautizo-lavanda-suave', 'Bautizo', 'Lavanda Suave', 'paloma', '#71678F', '#524A6B', '#EEECF4', '#C2A478'),
-  t('bautizo-perla-del-alba', 'Bautizo', 'Perla del Alba', 'concha', '#6E7580', '#4F555E', '#EDEFF1', '#C9A96A'),
+  t('bautizo-perla-del-alba', 'Bautizo', 'Perla del Alba', 'concha', '#6C737D', '#4F555E', '#EDEFF1', '#C9A96A'),
   t('bautizo-miel-de-angel', 'Bautizo', 'Miel de Ángel', 'cruz-olivos', '#96652A', '#734D1F', '#F7EFE2', '#D3B078'),
   t('bautizo-azul-profundo', 'Bautizo', 'Azul Profundo', 'paloma', '#2C4A6E', '#1E3450', '#E6ECF3', '#C2A478'),
 
@@ -61,14 +61,14 @@ export const THEMES: EventTheme[] = [
   t('boda-rosa-antiguo', 'Boda', 'Rosa Antiguo', 'rosa', '#A45D6E', '#7E4553', '#F7EBEE', '#C9A96A'),
   t('boda-esmeralda', 'Boda', 'Esmeralda', 'copas', '#20604F', '#16453A', '#E3EFEB', '#C2A478'),
   t('boda-terracota', 'Boda', 'Terracota', 'rosa', '#A2543A', '#7C402C', '#F7ECE7', '#C9A96A'),
-  t('boda-gris-perla', 'Boda', 'Gris Perla', 'anillos', '#6E7580', '#4F555E', '#EDEFF1', '#B8BEC7'),
+  t('boda-gris-perla', 'Boda', 'Gris Perla', 'anillos', '#6C737D', '#4F555E', '#EDEFF1', '#B8BEC7'),
   t('boda-lavanda-provenzal', 'Boda', 'Lavanda Provenzal', 'copas', '#71678F', '#524A6B', '#EEECF4', '#C2A478'),
   t('boda-carbon-y-oro', 'Boda', 'Carbón y Oro', 'anillos', '#44484F', '#2E3136', '#EAEBED', '#C9A96A'),
 
   // ===== XV Años =====
   t('xv-rosa-cuarzo', 'XV Años', 'Rosa Cuarzo', 'corona', '#B04A62', '#873849', '#F9EAEE', '#D3A9B4'),
   t('xv-lila-mariposa', 'XV Años', 'Lila Mariposa', 'mariposas', '#71678F', '#524A6B', '#EEECF4', '#C2A478'),
-  t('xv-oro-rosa', 'XV Años', 'Oro Rosa', 'corona', '#A66957', '#7E4F41', '#F8EDE9', '#D9AE9E'),
+  t('xv-oro-rosa', 'XV Años', 'Oro Rosa', 'corona', '#9E6453', '#7E4F41', '#F8EDE9', '#D9AE9E'),
   t('xv-azul-princesa', 'XV Años', 'Azul Princesa', 'corona', '#3E6493', '#2C486B', '#E8EDF4', '#C2A478'),
   t('xv-fucsia-vibrante', 'XV Años', 'Fucsia Vibrante', 'mariposas', '#A32E68', '#7A224E', '#F8E7F0', '#C9A96A'),
   t('xv-menta-floral', 'XV Años', 'Menta Floral', 'flor', '#3E7C6B', '#2C594C', '#E5F1ED', '#C2A478'),
@@ -90,15 +90,15 @@ export const THEMES: EventTheme[] = [
   t('cumple-multicolor-sobrio', 'Cumpleaños', 'Multicolor Sobrio', 'globos', '#6E6A62', '#4F4C46', '#EFEEEB', '#C2A478'),
 
   // ===== Baby Shower =====
-  t('baby-nube-de-algodon', 'Baby Shower', 'Nube de Algodón', 'nube-luna', '#4A7A96', '#33566B', '#E7F0F5', '#C2A478'),
+  t('baby-nube-de-algodon', 'Baby Shower', 'Nube de Algodón', 'nube-luna', '#497893', '#33566B', '#E7F0F5', '#C2A478'),
   t('baby-menta-bebe', 'Baby Shower', 'Menta Bebé', 'osito', '#3E7C6B', '#2C594C', '#E5F1ED', '#C2A478'),
   t('baby-rosita', 'Baby Shower', 'Rosita', 'piecitos', '#A45D6E', '#7E4553', '#F7EBEE', '#D3A9B4'),
   t('baby-amarillo-patito', 'Baby Shower', 'Amarillo Patito', 'osito', '#8A6D3B', '#6B532B', '#F5EFE3', '#D3B078'),
   t('baby-lavanda-dulce', 'Baby Shower', 'Lavanda Dulce', 'nube-luna', '#71678F', '#524A6B', '#EEECF4', '#C2A478'),
-  t('baby-gris-nube', 'Baby Shower', 'Gris Nube', 'piecitos', '#6E7580', '#4F555E', '#EDEFF1', '#B8BEC7'),
+  t('baby-gris-nube', 'Baby Shower', 'Gris Nube', 'piecitos', '#6C737D', '#4F555E', '#EDEFF1', '#B8BEC7'),
   t('baby-durazno-tierno', 'Baby Shower', 'Durazno Tierno', 'osito', '#B05A3C', '#84432D', '#F9ECE7', '#D3A98F'),
   t('baby-aqua-marina', 'Baby Shower', 'Aqua Marina', 'nube-luna', '#3E7C7B', '#2C5958', '#E5F1F1', '#C2A478'),
-  t('baby-beige-arena', 'Baby Shower', 'Beige Arena', 'piecitos', '#8A7355', '#68563F', '#F4F0E9', '#C9A96A'),
+  t('baby-beige-arena', 'Baby Shower', 'Beige Arena', 'piecitos', '#846E52', '#68563F', '#F4F0E9', '#C9A96A'),
   t('baby-azul-cuna', 'Baby Shower', 'Azul Cuna', 'osito', '#55708C', '#394E63', '#E9EEF3', '#C2A478'),
 
   // ===== Graduación =====
@@ -109,7 +109,7 @@ export const THEMES: EventTheme[] = [
   t('grad-carbon-elegante', 'Graduación', 'Carbón Elegante', 'estrellas', '#44484F', '#2E3136', '#EAEBED', '#C9A96A'),
   t('grad-azul-doctoral', 'Graduación', 'Azul Doctoral', 'birrete', '#3E6493', '#2C486B', '#E8EDF4', '#C2A478'),
   t('grad-purpura-honor', 'Graduación', 'Púrpura Honor', 'laurel', '#6B4A96', '#4E366E', '#EDE8F4', '#C2A478'),
-  t('grad-plata-luna', 'Graduación', 'Plata Luna', 'estrellas', '#6E7580', '#4F555E', '#EDEFF1', '#B8BEC7'),
+  t('grad-plata-luna', 'Graduación', 'Plata Luna', 'estrellas', '#6C737D', '#4F555E', '#EDEFF1', '#B8BEC7'),
   t('grad-terracota-otono', 'Graduación', 'Terracota Otoño', 'laurel', '#A2543A', '#7C402C', '#F7ECE7', '#C9A96A'),
   t('grad-verde-oliva', 'Graduación', 'Verde Oliva', 'birrete', '#5F7A2E', '#465A22', '#EDF2E4', '#C9A96A'),
 ];

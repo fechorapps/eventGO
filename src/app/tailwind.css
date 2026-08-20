@@ -1247,6 +1247,19 @@ h1, h2, h3, h4 {
   font-weight: 500;
 }
 
+.wiz-map-preview {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+/* Leaflet's .leaflet-div-icon default adds a white box + border around
+   any divIcon — AddressMapField's pin is its own inline SVG shape. */
+.wiz-map-pin-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
 .wiz-phone-wrap {
   display: flex;
   align-items: center;

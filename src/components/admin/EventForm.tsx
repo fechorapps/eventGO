@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Trash2, Plus, Save, Clock, Church, Wine, ShoppingCart, Camera, Gift, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import DateField from '@/components/DateField';
 import ThemePicker from '@/components/admin/ThemePicker';
 import { DEFAULT_THEME_ID } from '@/lib/themes';
 import type { Event, TempItineraryInput, TempRegistryInput } from '@/types/admin';
+
+// Leaflet touches `window` at module load — ssr:false keeps it out of the
+// server render entirely instead of guarding every internal usage.
+const AddressMapField = dynamic(() => import('@/components/admin/AddressMapField'), {
+  ssr: false,
+  loading: () => <div className="wiz-field-hint">Cargando mapa…</div>,
+});
 
 type EventFormProps = { mode: 'create' } | { mode: 'edit'; eventId: number };
 
@@ -870,19 +878,12 @@ export default function EventForm(props: EventFormProps) {
                   <input id="church-address" type="text" className="wiz-field-input" placeholder="Calle, Número, Colonia, CP" value={formChurchAddress} onChange={(e) => setFormChurchAddress(e.target.value)} />
                 </div>
                 <div className="wiz-field-group" style={{ marginBottom: 0 }}>
-                  <label className="wiz-field-label" htmlFor="church-maps">Enlace de Google Maps / Waze</label>
-                  <input
-                    id="church-maps"
-                    type="text"
-                    className={`wiz-field-input ${formChurchMapsUrl && !isValidUrl(formChurchMapsUrl) ? 'error' : ''}`}
-                    placeholder="https://maps.google.com/..."
-                    value={formChurchMapsUrl}
-                    onChange={(e) => setFormChurchMapsUrl(e.target.value)}
-                    onBlur={(e) => setFormChurchMapsUrl(ensureHttp(e.target.value))}
+                  <label className="wiz-field-label">Ubicación en el Mapa</label>
+                  <AddressMapField
+                    addressValue={formChurchAddress}
+                    mapsUrlValue={formChurchMapsUrl}
+                    onMapsUrlChange={setFormChurchMapsUrl}
                   />
-                  {formChurchMapsUrl && !isValidUrl(formChurchMapsUrl) && (
-                    <span className="wiz-field-error-text">Formato de enlace incorrecto (debe incluir http:// o https://)</span>
-                  )}
                 </div>
               </div>
 
@@ -902,19 +903,12 @@ export default function EventForm(props: EventFormProps) {
                   <input id="hall-address" type="text" className="wiz-field-input" placeholder="Calle, Número, Colonia, CP" value={formHallAddress} onChange={(e) => setFormHallAddress(e.target.value)} />
                 </div>
                 <div className="wiz-field-group" style={{ marginBottom: 0 }}>
-                  <label className="wiz-field-label" htmlFor="hall-maps">Enlace de Google Maps / Waze</label>
-                  <input
-                    id="hall-maps"
-                    type="text"
-                    className={`wiz-field-input ${formHallMapsUrl && !isValidUrl(formHallMapsUrl) ? 'error' : ''}`}
-                    placeholder="https://maps.google.com/..."
-                    value={formHallMapsUrl}
-                    onChange={(e) => setFormHallMapsUrl(e.target.value)}
-                    onBlur={(e) => setFormHallMapsUrl(ensureHttp(e.target.value))}
+                  <label className="wiz-field-label">Ubicación en el Mapa</label>
+                  <AddressMapField
+                    addressValue={formHallAddress}
+                    mapsUrlValue={formHallMapsUrl}
+                    onMapsUrlChange={setFormHallMapsUrl}
                   />
-                  {formHallMapsUrl && !isValidUrl(formHallMapsUrl) && (
-                    <span className="wiz-field-error-text">Formato de enlace incorrecto (debe incluir http:// o https://)</span>
-                  )}
                 </div>
               </div>}
             </div>

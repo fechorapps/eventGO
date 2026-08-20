@@ -1179,6 +1179,39 @@ h1, h2, h3, h4 {
   flex: 1;
 }
 
+.wiz-slug-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.wiz-slug-status strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.wiz-slug-available {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #16a34a;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.wiz-spin {
+  animation: wiz-spin 0.8s linear infinite;
+}
+
+@keyframes wiz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Guest Add Section */
 .guest-item-card {
   background: var(--color-bg-accent);

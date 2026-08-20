@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, Plus, Save, Clock, Church, Wine, ShoppingCart, Camera, Gift, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Plus, Save, Clock, Church, Wine, ShoppingCart, Camera, Gift, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import DateField from '@/components/DateField';
 import ThemePicker from '@/components/admin/ThemePicker';
 import { DEFAULT_THEME_ID } from '@/lib/themes';
@@ -33,6 +33,7 @@ export default function EventForm(props: EventFormProps) {
   const [initLoading, setInitLoading] = useState(isEdit);
   const [notFound, setNotFound] = useState(false);
   const [step, setStep] = useState(0);
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'ready'>('idle');
 
   const [formSlug, setFormSlug] = useState('');
   const [formTitle, setFormTitle] = useState('Bautizo');
@@ -109,6 +110,14 @@ export default function EventForm(props: EventFormProps) {
 
   const formatClabe = (value: string) =>
     (value.replace(/\D/g, '').slice(0, 18).match(/.{1,3}/g) || []).join(' ');
+
+  const slugify = (value: string): string =>
+    value
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '') // strip accents
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
 
   // URL Auto-Prefix & Validation Helpers
   const ensureHttp = (url: string): string => {
@@ -386,6 +395,54 @@ export default function EventForm(props: EventFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Create mode only — edit mode's slug is already set (from the fetched
+  // event) and stays immutable, matching the field's old disabled state.
+  // Derives a slug from the title (falling back to the celebrant's name),
+  // then silently walks -2/-3/... until check-slug reports it's free, so
+  // the organizer never has to think about the URL identifier at all.
+  useEffect(() => {
+    if (eventFormId) return;
+
+    const base = slugify(formTitle || formCelebrantName);
+    if (!base) {
+      setFormSlug('');
+      setSlugStatus('idle');
+      return;
+    }
+
+    let cancelled = false;
+    setSlugStatus('checking');
+
+    const timer = setTimeout(async () => {
+      let candidate = base;
+      for (let suffix = 2; suffix <= 50 && !cancelled; suffix++) {
+        try {
+          const res = await fetch(`/api/admin/events/check-slug?slug=${encodeURIComponent(candidate)}`);
+          if (res.status === 401) {
+            router.refresh();
+            return;
+          }
+          const data = await res.json();
+          if (data.available) break;
+        } catch (e) {
+          console.error(e);
+          break; // network hiccup — submit-time uniqueness check is the safety net
+        }
+        candidate = `${base}-${suffix}`;
+      }
+      if (!cancelled) {
+        setFormSlug(candidate);
+        setSlugStatus('ready');
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formTitle, formCelebrantName, eventFormId]);
+
   // Per-step gate for "Siguiente" — a subset of handleSaveEvent's full
   // validation, scoped to what that particular step can actually get
   // wrong. handleSaveEvent's own checks stay the authoritative safety
@@ -616,20 +673,27 @@ export default function EventForm(props: EventFormProps) {
               </div>
 
               <div className="wiz-field-group">
-                <label className="wiz-field-label" htmlFor="form-slug">Identificador URL (Slug) *</label>
-                <input
-                  id="form-slug"
-                  type="text"
-                  className="wiz-field-input"
-                  placeholder="Ej: bautizo-gael (minúsculas y guiones)"
-                  value={formSlug}
-                  onChange={(e) => setFormSlug(e.target.value)}
-                  required
-                  disabled={!!eventFormId}
-                />
-                <span className="wiz-field-hint">
-                  El enlace público de la invitación será: <strong>/e/{formSlug || 'identificador'}</strong>
-                </span>
+                <label className="wiz-field-label">Identificador URL</label>
+                {eventFormId ? (
+                  <span className="wiz-field-hint">
+                    Enlace público: <strong>/e/{formSlug}</strong> (no se puede modificar)
+                  </span>
+                ) : slugStatus === 'checking' ? (
+                  <span className="wiz-slug-status">
+                    <Loader2 size={12} className="wiz-spin" />
+                    Generando identificador…
+                  </span>
+                ) : formSlug ? (
+                  <span className="wiz-slug-status ready">
+                    Enlace generado automáticamente: <strong>/e/{formSlug}</strong>
+                    <span className="wiz-slug-available">
+                      <Check size={11} />
+                      Disponible
+                    </span>
+                  </span>
+                ) : (
+                  <span className="wiz-field-hint">Se generará a partir del título del evento.</span>
+                )}
               </div>
 
               <div className="wiz-field-group full">

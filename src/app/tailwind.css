@@ -31,6 +31,24 @@
   --radius-lg: 8px;
 }
 
+/* Unprefixed aliases for the tokens above. Inline styles across the public
+   site and admin (src/app/e/[slug]/page.tsx, RsvpForm.tsx, EventForm.tsx,
+   EventRsvps.tsx, admin/page.tsx, DateField.tsx — 51+ call sites) reference
+   var(--gold-dark) etc. without the --color- prefix Tailwind v4's @theme
+   block actually defines; those references were silently resolving to
+   nothing. Defining them here as indirections means overriding the
+   --color-* tokens further down the tree (see the [data-theme="..."]
+   blocks below) automatically flows through to every existing call site —
+   custom properties resolve at used-value time, not at definition time. */
+:root {
+  --gold-dark: var(--color-gold-dark);
+  --gold-medium: var(--color-gold-medium);
+  --bg-accent: var(--color-bg-accent);
+  --bg-secondary: var(--color-bg-secondary);
+  --text-dark: var(--color-text-dark);
+  --text-muted: var(--color-text-muted);
+}
+
 @layer base {
 * {
   box-sizing: border-box;

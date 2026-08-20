@@ -17,7 +17,12 @@ model Event {
   heroBackgroundUrl    String?    @map("hero_background_url")
   detailsBackgroundUrl String?    @map("details_background_url")
   rsvpBackgroundUrl    String?    @map("rsvp_background_url")
-  
+
+  // Visual theme for the public invitation page — a key into the curated
+  // catalog in src/lib/themes.ts (not a DB enum, so new themes don't need
+  // a migration). Defaults to today's existing look.
+  theme           String          @default("dorado-clasico")
+
   // Parents & Godparents
   parents         String?         // Format: "Sofia Mendoza, Alejandro Ruiz"
   godparents      String?         // Format: "Maria Ruiz, Carlos Mendoza"

@@ -728,6 +728,97 @@ h1, h2, h3, h4 {
   min-height: 100px;
 }
 
+/* Theme Picker (admin EventForm — src/components/admin/ThemePicker.tsx) */
+.theme-picker-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.theme-picker-category-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(85, 112, 140, 0.25);
+  background: #ffffff;
+  color: var(--color-text-dark);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.theme-picker-category-btn:hover {
+  border-color: var(--color-gold-dark);
+}
+
+.theme-picker-category-btn.active {
+  background: var(--color-gold-dark);
+  color: #ffffff;
+  border-color: var(--color-gold-dark);
+}
+
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.8rem;
+}
+
+.theme-picker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.theme-picker-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.theme-picker-card.selected {
+  border-color: var(--color-gold-dark);
+  box-shadow: 0 0 0 3px rgba(85, 112, 140, 0.15);
+}
+
+.theme-picker-swatches {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.theme-picker-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.theme-picker-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-gold-dark);
+  color: #ffffff;
+  margin-left: auto;
+}
+
+.theme-picker-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
 /* Guest Add Section */
 .guest-item-card {
   background: var(--color-bg-accent);

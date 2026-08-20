@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, Plus, Save, Clock, Church, Wine, ShoppingCart, Camera, Gift } from 'lucide-react';
 import DateField from '@/components/DateField';
+import ThemePicker from '@/components/admin/ThemePicker';
+import { DEFAULT_THEME_ID } from '@/lib/themes';
 import type { Event, TempItineraryInput, TempRegistryInput } from '@/types/admin';
 
 type EventFormProps = { mode: 'create' } | { mode: 'edit'; eventId: number };
@@ -25,6 +27,7 @@ export default function EventForm(props: EventFormProps) {
   const [formCelebrantName, setFormCelebrantName] = useState('');
   const [formSubtitle, setFormSubtitle] = useState('Nuestra Promesa de Amor');
   const [formQuote, setFormQuote] = useState('');
+  const [formTheme, setFormTheme] = useState(DEFAULT_THEME_ID);
   const [formDate, setFormDate] = useState('');
   const [formHeroBackgroundUrl, setFormHeroBackgroundUrl] = useState('');
   const [formDetailsBackgroundUrl, setFormDetailsBackgroundUrl] = useState('');
@@ -196,6 +199,7 @@ export default function EventForm(props: EventFormProps) {
     setFormCelebrantName('');
     setFormSubtitle('Nuestra Promesa de Amor');
     setFormQuote('Señor, toma mi pequeña vida en tus manos, guíame con tu amor y enséñame a caminar bajo tu luz divina.');
+    setFormTheme(DEFAULT_THEME_ID);
 
     const futureDate = new Date();
     futureDate.setMonth(futureDate.getMonth() + 3);
@@ -263,6 +267,7 @@ export default function EventForm(props: EventFormProps) {
     setFormCelebrantName(event.celebrantName);
     setFormSubtitle(event.subtitle || '');
     setFormQuote(event.quote || '');
+    setFormTheme(event.theme || DEFAULT_THEME_ID);
     setFormHeroBackgroundUrl(event.heroBackgroundUrl || '');
     setFormDetailsBackgroundUrl(event.detailsBackgroundUrl || '');
     setFormRsvpBackgroundUrl(event.rsvpBackgroundUrl || '');
@@ -420,6 +425,7 @@ export default function EventForm(props: EventFormProps) {
       celebrantName: formCelebrantName.trim(),
       subtitle: formSubtitle.trim() || null,
       quote: formQuote.trim() || null,
+      theme: formTheme,
       date: new Date(formDate).toISOString(),
       heroBackgroundUrl: formHeroBackgroundUrl.trim() || null,
       detailsBackgroundUrl: formDetailsBackgroundUrl.trim() || null,
@@ -600,6 +606,17 @@ export default function EventForm(props: EventFormProps) {
                 onChange={(e) => setFormQuote(e.target.value)}
                 style={{ minHeight: '60px', resize: 'vertical' }}
               />
+            </div>
+
+            {/* --- SECCIÓN: APARIENCIA --- */}
+            <h3 style={{ fontSize: '1.2rem', color: 'var(--gold-dark)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px dashed rgba(212,175,55,0.15)', paddingTop: '1.5rem' }}>
+              Apariencia
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>
+              Elige la paleta de la invitación pública. No afecta este panel de administración.
+            </p>
+            <div style={{ marginBottom: '2.5rem' }}>
+              <ThemePicker value={formTheme} onChange={setFormTheme} />
             </div>
 
             {/* --- SECCIÓN 2: PADRES Y PADRINOS --- */}

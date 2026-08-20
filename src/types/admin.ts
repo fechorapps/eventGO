@@ -48,6 +48,7 @@ export interface Event {
   celebrantName: string;
   subtitle: string | null;
   quote: string | null;
+  theme: string;
   date: string;
   heroBackgroundUrl: string | null;
   detailsBackgroundUrl: string | null;

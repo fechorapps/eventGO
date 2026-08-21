@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { ExternalLink, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,10 @@ export function AdminHeader({ authenticated = false }: { authenticated?: boolean
     >
       <Container className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <span className="text-mono text-lg font-semibold">eventGO</span>
+          <Link href="/admin" className="flex items-center gap-2 no-underline" aria-label="EventGo, ir al panel de administración">
+            <Image src="/brand/eventgo-mark.png" alt="" width={32} height={32} priority className="size-8 shrink-0" />
+            <span className="text-mono text-lg font-semibold tracking-tight text-foreground">EventGo</span>
+          </Link>
           <span className="text-muted-foreground text-sm hidden sm:inline">Panel de administración</span>
         </div>
 

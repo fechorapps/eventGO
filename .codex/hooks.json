@@ -1,0 +1,18 @@
+{
+  "description": "Recordatorios de selección de modelo para optimizar el uso de Codex en EventGO.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/model-routing-reminder.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Revisando modelo recomendado",
+            "additionalContextLimit": 500
+          }
+        ]
+      }
+    ]
+  }
+}

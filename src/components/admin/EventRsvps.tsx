@@ -1461,15 +1461,6 @@ export default function EventRsvps({ eventId }: { eventId: number }) {
                   <Download size={14} />
                   Exportar
                 </button>
-                <button
-                  onClick={() => fetchRsvps()}
-                  className="btn-outline"
-                  disabled={rsvpsLoading}
-                  style={{ height: '36px', width: '36px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Actualizar datos"
-                >
-                  <RefreshCw size={14} className={rsvpsLoading ? 'animate-spin' : ''} />
-                </button>
               </div>
             </div>
 
@@ -1602,6 +1593,7 @@ export default function EventRsvps({ eventId }: { eventId: number }) {
                 {rsvps.length === 0 ? 'Aún no hay confirmaciones registradas para este evento.' : 'No se encontraron resultados.'}
               </p>
             ) : (
+              <>
               <div className="table-responsive" style={{ marginBottom: 0 }}>
                 <table className="admin-table">
                   <thead>
@@ -1849,6 +1841,132 @@ export default function EventRsvps({ eventId }: { eventId: number }) {
                   </tbody>
                 </table>
               </div>
+
+              <div className="family-cards-mobile">
+                {paginatedRsvps.data.map((rsvp) => {
+                  const familyStatus = getFamilyRsvpStatus(rsvp);
+                  const familyInitials = (() => {
+                    const parts = rsvp.familyName.replace(/^familia\s+/i, '').trim().split(/\s+/).filter(Boolean);
+                    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+                    return (rsvp.familyName.trim().slice(0, 2) || 'FM').toUpperCase();
+                  })();
+                  const sideClass = rsvp.invitedBy === 'PAPA' ? 'papa' : rsvp.invitedBy === 'MAMA' ? 'mama' : 'bebes';
+
+                  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/e/${event.slug}?f=${rsvp.slug}`;
+                  const text = `¡Hola! Te invitamos cordialmente a celebrar con nosotros: *${event.title} de ${event.celebrantName}* ✨.\n\nPor favor, confirma tu asistencia y la de tus familiares ingresando al siguiente enlace:\n\n${url}`;
+                  const cleanPhone = rsvp.contactPhone ? rsvp.contactPhone.replace(/\D/g, '') : '';
+                  const formattedPhone = cleanPhone.length === 10 ? `52${cleanPhone}` : cleanPhone;
+                  const waLink = formattedPhone
+                    ? `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`
+                    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+                  return (
+                    <div key={rsvp.id} className="rsvp-mobile-card">
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <div className={`family-avatar ${sideClass}`} title={`Familia · Lado ${formatInvitedByLabel(rsvp.invitedBy)}`}>
+                          {familyInitials}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.92rem', lineHeight: '1.25' }}>
+                            {rsvp.familyName}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px', marginTop: '0.3rem' }}>
+                            <span className={`status-badge ${familyStatus.className}`} style={{ fontSize: '0.66rem', padding: '0.15rem 0.5rem' }}>
+                              {familyStatus.label}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {familyStatus.summary}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: '#475569', marginTop: '0.25rem' }}>
+                            Lado: <strong style={{ color: '#475569' }}>{formatInvitedByLabel(rsvp.invitedBy)}</strong> · {new Date(rsvp.createdAt).toLocaleDateString('es-MX')}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rsvp-mobile-pills">
+                        {rsvp.contactPhone ? (
+                          <a
+                            href={`https://wa.me/${rsvp.contactPhone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rsvp-mobile-contact-pill"
+                            title="Abrir chat de WhatsApp"
+                          >
+                            <Phone size={12} />
+                            {rsvp.contactPhone}
+                          </a>
+                        ) : (
+                          <span className="rsvp-mobile-contact-pill empty">Sin teléfono</span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleInvitationSent(rsvp)}
+                          disabled={rsvpActionLoadingId === rsvp.id}
+                          className={`invitation-sent-pill ${rsvp.invitationSent ? 'sent' : 'pending'}`}
+                          title="Click para alternar: Enviada ⇄ Pendiente"
+                        >
+                          {rsvp.invitationSent ? (
+                            <>
+                              <Check size={12} /> Enviada
+                            </>
+                          ) : (
+                            <>
+                              <Clock size={12} /> Pendiente
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="rsvp-mobile-chip-row">
+                        {rsvp.guests.map((guest) => {
+                          const dotClass = guest.confirmed === true ? 'confirmed' : guest.confirmed === false ? 'declined' : 'pending';
+                          return (
+                            <span key={guest.id} className="rsvp-mobile-chip">
+                              <span className={`rsvp-mobile-dot ${dotClass}`}></span>
+                              {guest.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+
+                      {rsvp.comments && (
+                        <div className="comments-callout">
+                          <MessageSquare size={13} style={{ flexShrink: 0, marginTop: '2px', color: '#94a3b8' }} />
+                          <span>{rsvp.comments}</span>
+                        </div>
+                      )}
+
+                      <div className="rsvp-mobile-actions">
+                        <button type="button" onClick={() => handleEditRsvp(rsvp)} className="rsvp-mobile-edit-btn">
+                          <Edit size={14} />
+                          Editar familia
+                        </button>
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-icon-action wa"
+                          title="Enviar invitación por WhatsApp"
+                        >
+                          <Send size={14} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRsvp(rsvp.id, rsvp.familyName)}
+                          className="btn-icon-action danger"
+                          disabled={rsvpActionLoadingId === rsvp.id}
+                          title="Eliminar confirmación"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </>
             )}
 
             <Pagination

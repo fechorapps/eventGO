@@ -9,7 +9,7 @@ export default async function MesasPage({ params }: { params: Promise<{ eventId:
 
   if (isNaN(eventId)) {
     return (
-      <div className="admin-container" style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+      <div className="admin-container seating-admin-page seating-admin-page-error">
         <h2 style={{ color: '#0f172a', fontFamily: 'var(--font-sans)' }}>Error: ID de evento inválido</h2>
         <Link href="/admin" className="btn-outline" style={{ marginTop: '1rem', display: 'inline-flex' }}>Volver</Link>
       </div>
@@ -17,18 +17,18 @@ export default async function MesasPage({ params }: { params: Promise<{ eventId:
   }
 
   return (
-    <div className="admin-container" style={{ minHeight: '100vh', padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0, fontFamily: 'var(--font-sans)' }}>
+    <div className="admin-container seating-admin-container seating-admin-page">
+      <div className="seating-admin-page-header">
+        <h2>
           Acomodo de mesas — Evento #{eventId}
         </h2>
-        <Link href={`/admin/eventos/${eventId}`} className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1.2rem', textDecoration: 'none' }}>
+        <Link href={`/admin/eventos/${eventId}`} className="btn-outline seating-admin-page-back-link">
           <ChevronLeft size={16} />
           Volver a Invitados
         </Link>
       </div>
 
-      <div className="section-card" style={{ padding: '2rem', borderRadius: '16px', background: '#fff' }}>
+      <div className="section-card seating-admin-page-card">
         <SeatingPlanner eventId={eventId} />
       </div>
     </div>

@@ -1123,33 +1123,37 @@ function AllTablesGrid({
   );
 }
 
-type Step = 'MAMA' | 'PAPA' | 'REVIEW';
-const STEP_ORDER: Step[] = ['MAMA', 'PAPA', 'REVIEW'];
-const STEP_LABEL: Record<Step, string> = { MAMA: 'Mamá', PAPA: 'Papá', REVIEW: 'Revisión' };
+type Step = 'LAYOUT' | 'ASSIGN' | 'REVIEW';
+const STEP_ORDER: Step[] = ['LAYOUT', 'ASSIGN', 'REVIEW'];
+const STEP_LABEL: Record<Step, string> = { LAYOUT: 'Diseñar salón', ASSIGN: 'Asignar invitados', REVIEW: 'Revisar y exportar' };
 
 function Stepper({
   active,
   onChange,
-  sideProgress,
+  seatedGuests,
+  totalGuests,
+  tableCount,
   unassignedGuests,
   overCapacityTables,
 }: {
   active: Step;
   onChange: (s: Step) => void;
-  sideProgress: Record<Side, { seated: number; total: number }>;
+  seatedGuests: number;
+  totalGuests: number;
+  tableCount: number;
   unassignedGuests: number;
   overCapacityTables: number;
 }) {
   const detail: Record<Step, string> = {
-    MAMA: `${sideProgress.MAMA.seated}/${sideProgress.MAMA.total} asignados`,
-    PAPA: `${sideProgress.PAPA.seated}/${sideProgress.PAPA.total} asignados`,
+    LAYOUT: `${tableCount} ${tableCount === 1 ? 'mesa' : 'mesas'}`,
+    ASSIGN: `${seatedGuests}/${totalGuests} asignados`,
     REVIEW: `${unassignedGuests} sin mesa${overCapacityTables ? ` · ${overCapacityTables} con sobrecupo` : ''}`,
   };
   return (
     <div className="seat-stepper" role="tablist" aria-label="Pasos del acomodo">
       {STEP_ORDER.map((step) => {
         const isActive = step === active;
-        const color = step === 'MAMA' ? SIDE_COLOR.MAMA : step === 'PAPA' ? SIDE_COLOR.PAPA : '#0f172a';
+        const color = step === 'LAYOUT' ? '#33567D' : step === 'ASSIGN' ? '#B5546F' : '#0f172a';
         return (
           <button
             key={step}
@@ -1248,7 +1252,8 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [step, setStep] = useState<Step>('MAMA');
+  const [step, setStep] = useState<Step>('LAYOUT');
+  const [assignmentSide, setAssignmentSide] = useState<Side>('MAMA');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -1334,20 +1339,6 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
   const totalSeats = useMemo(() => tables.reduce((sum, table) => sum + table.seats, 0), [tables]);
 
-  const sideProgress = useMemo<Record<Side, { seated: number; total: number }>>(() => {
-    const progress: Record<Side, { seated: number; total: number }> = {
-      MAMA: { seated: 0, total: 0 },
-      PAPA: { seated: 0, total: 0 },
-    };
-    for (const family of families) {
-      if (!family.side) continue;
-      const count = headcount(family);
-      progress[family.side].total += count;
-      if (family.tableId != null) progress[family.side].seated += count;
-    }
-    return progress;
-  }, [families]);
-
   const unassignedGuests = useMemo(
     () => unassigned.reduce((sum, family) => sum + headcount(family), 0),
     [unassigned]
@@ -1356,6 +1347,11 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   const overCapacityTables = useMemo(
     () => tables.filter((table) => (familiesByTable.get(table.id) ?? []).reduce((sum, family) => sum + headcount(family), 0) > table.seats).length,
     [familiesByTable, tables]
+  );
+
+  const unassignedForAssignment = useMemo(
+    () => unassigned.filter((family) => family.side == null || family.side === assignmentSide),
+    [unassigned, assignmentSide]
   );
 
   // --- API helpers ---
@@ -1640,17 +1636,36 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
           </div>
         )}
 
-        <Stepper active={step} onChange={setStep} sideProgress={sideProgress} unassignedGuests={unassignedGuests} overCapacityTables={overCapacityTables} />
+        <Stepper active={step} onChange={setStep} seatedGuests={seatedGuests} totalGuests={totalGuests} tableCount={tables.length} unassignedGuests={unassignedGuests} overCapacityTables={overCapacityTables} />
 
         <div key={step} className="seat-step-content animate-in fade-in slide-in-from-right-2 duration-200">
-          {(step === 'MAMA' || step === 'PAPA') && (() => {
-            const activeSide: Side = step;
-            const unassignedForSide = unassigned.filter((family) => family.side == null || family.side === activeSide);
-            return (
+          {step === 'LAYOUT' && (
+            <AllTablesGrid
+              tables={tables}
+              familiesByTable={familiesByTable}
+              eventId={eventId}
+              onAddTable={addTable}
+              onDeleteTable={(tableId) => setConfirmation({ kind: 'table', tableId })}
+              onRenameTable={renameTable}
+              onSelectTable={setMobileTableSelect}
+              onSelectFamily={setMobileFamilySelect}
+              onRequestClearSeating={() => setConfirmation({ kind: 'clear' })}
+              resetRevision={layoutResetRevision}
+            />
+          )}
+
+          {step === 'ASSIGN' && (
             <>
-              <UnassignedTray families={unassignedForSide} onSelectFamily={setMobileFamilySelect} />
+              <div className="seat-assignment-side-picker" role="group" aria-label="Familias y mesas por lado">
+                {(['MAMA', 'PAPA'] as Side[]).map((side) => (
+                  <button key={side} type="button" className={assignmentSide === side ? 'is-active' : undefined} style={assignmentSide === side ? { borderColor: SIDE_COLOR[side], color: SIDE_COLOR[side] } : undefined} onClick={() => setAssignmentSide(side)}>
+                    <span className="seat-side-dot" style={{ background: SIDE_COLOR[side] }} aria-hidden /> Lado {SIDE_LABEL[side]}
+                  </button>
+                ))}
+              </div>
+              <UnassignedTray families={unassignedForAssignment} onSelectFamily={setMobileFamilySelect} />
               <SideSection
-                side={activeSide}
+                side={assignmentSide}
                 tables={tables}
                 familiesByTable={familiesByTable}
                 onAddTable={addTable}
@@ -1660,8 +1675,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                 onSelectFamily={setMobileFamilySelect}
               />
             </>
-            );
-          })()}
+          )}
 
           {step === 'REVIEW' && (
             <>

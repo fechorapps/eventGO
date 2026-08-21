@@ -4699,7 +4699,7 @@ body { overflow-x: clip; }
 .seat-floor-item .seat-table-card { box-shadow: 0 3px 10px rgba(15, 23, 42, .1); }
 .seat-floor-item-drag {
   position: absolute; z-index: 4; top: -9px; left: 50%; display: grid; place-items: center; width: 26px; height: 20px;
-  border: 1px solid #b8c8d9; border-radius: 999px; background: #fff; color: #526f8c; cursor: grab; transform: translateX(-50%);
+  border: 1px solid #b8c8d9; border-radius: 999px; background: #fff; color: #526f8c; cursor: grab; touch-action: none; transform: translateX(-50%);
 }
 .seat-floor-item-drag:active { cursor: grabbing; }
 .seat-floor-item-rotate {
@@ -4801,6 +4801,42 @@ body { overflow-x: clip; }
   .seat-review-health { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .seat-floorplan-selection-toolbar > span { flex-basis: 100%; }
 }
+
+/* --------------------------------------------------------------------------
+   Vista móvil del plano del salón
+   El salón no se comprime para caber en la pantalla: mantiene su escala de
+   diseño y se convierte en un lienzo que se recorre con scroll horizontal y
+   vertical. En escritorio los contenedores son transparentes (display: contents)
+   y el plano conserva exactamente el layout de siempre.
+   -------------------------------------------------------------------------- */
+.seat-floorplan-canvas, .seat-floorplan-canvas-inner { display: contents; }
+.seat-floorplan-canvas.is-mobile-view {
+  display: block; overflow: auto; max-height: min(72svh, 560px); border-radius: 18px; background: #eef3f8;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.is-mobile-view .seat-floorplan-canvas-inner {
+  position: relative; display: block;
+  width: calc(var(--floor-base-width) * var(--floor-zoom));
+  height: calc((var(--floor-base-width) / var(--floor-ratio)) * var(--floor-zoom));
+}
+.is-mobile-view .seat-floorplan-room {
+  width: var(--floor-base-width); min-width: 0; height: calc(var(--floor-base-width) / var(--floor-ratio)); min-height: 0;
+  max-width: none; touch-action: pan-x pan-y; transform: scale(var(--floor-zoom)); transform-origin: top left;
+}
+.seat-floorplan-mobile-bar {
+  display: flex; align-items: center; gap: .4rem; padding: .4rem .45rem;
+  border: 1px solid #d9e2eb; border-radius: 12px; background: #fff;
+}
+.seat-floorplan-mobile-bar button {
+  display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-width: 36px; min-height: 36px; padding: .35rem .55rem;
+  border: 1px solid #d9e2eb; border-radius: 8px; background: #fff; color: #334155; cursor: pointer; font: inherit; font-size: .72rem; font-weight: 750;
+}
+.seat-floorplan-mobile-bar button:hover, .seat-floorplan-mobile-bar button[aria-expanded='true'] { border-color: #33567D; background: #edf4fb; color: #1f496f; }
+.seat-floorplan-mobile-bar button:disabled { cursor: not-allowed; opacity: .45; }
+.seat-floorplan-zoom { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; }
+.seat-floorplan-zoom output { min-width: 42px; color: #47647c; font-size: .72rem; font-weight: 800; font-variant-numeric: tabular-nums; text-align: center; }
+.seat-floorplan-palette.is-collapsed { display: none; }
+.seat-floorplan-hint { margin: .4rem .15rem 0; color: #64748b; font-size: .67rem; font-weight: 650; line-height: 1.4; text-align: start; }
 
 /* Editor de capacidad: el rango actualiza el plano antes de persistir el cambio. */
 .seat-capacity-editor { margin: -.25rem 0 1.25rem; padding: .85rem; border: 1px solid #d9e2eb; border-radius: 12px; background: #f8fafc; }

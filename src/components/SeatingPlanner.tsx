@@ -142,6 +142,18 @@ interface FloorSettings {
 
 const DEFAULT_FLOOR_SETTINGS: FloorSettings = { orientation: 'horizontal', width: 20, height: 12 };
 
+/* Vista móvil del plano. En pantallas chicas el salón deja de comprimirse para
+ * caber: conserva su escala de diseño y se recorre con scroll horizontal y
+ * vertical dentro de una ventana, con zoom para pasar del detalle al conjunto. */
+const MOBILE_FLOORPLAN_QUERY = '(max-width: 900px)';
+const MOBILE_FLOOR_PX_PER_METER = 46;
+const MOBILE_FLOOR_MIN_WIDTH = 720;
+const MOBILE_FLOOR_MAX_WIDTH = 1440;
+const MOBILE_ZOOM_MIN = .3;
+const MOBILE_ZOOM_MAX = 1.6;
+const MOBILE_ZOOM_STEP = 1.2;
+const clampFloorZoom = (zoom: number) => Math.min(MOBILE_ZOOM_MAX, Math.max(MOBILE_ZOOM_MIN, Math.round(zoom * 100) / 100));
+
 const FLOOR_ITEM_LABEL: Record<FloorItemKind, string> = {
   round: 'Mesa redonda', square: 'Mesa cuadrada', rectangle: 'Mesa rectangular', imperial: 'Mesa imperial',
   lineHorizontal: 'Línea horizontal', lineVertical: 'Línea vertical', block: 'Bloque cuadrado',
@@ -587,6 +599,10 @@ function AllTablesGrid({
   variant?: 'default' | 'reference';
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [floorZoom, setFloorZoom] = useState(1);
+  const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
   const [items, setItems] = useState<FloorItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [selectedShape, setSelectedShape] = useState<TableShape>('round');
@@ -677,6 +693,24 @@ function AllTablesGrid({
   useEffect(() => {
     if (resetRevision > 0) persist([], DEFAULT_FLOOR_SETTINGS);
   }, [persist, resetRevision]);
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_FLOORPLAN_QUERY);
+    const syncViewport = () => setIsMobileView(query.matches);
+    syncViewport();
+    query.addEventListener('change', syncViewport);
+    return () => query.removeEventListener('change', syncViewport);
+  }, []);
+
+  /* El plano se dibuja a un ancho de diseño derivado de los metros del salón, no
+   * del ancho de la pantalla: así una mesa se ve igual en móvil que en escritorio. */
+  const floorBaseWidth = Math.round(Math.min(MOBILE_FLOOR_MAX_WIDTH, Math.max(MOBILE_FLOOR_MIN_WIDTH, floorSettings.width * MOBILE_FLOOR_PX_PER_METER)));
+
+  const fitFloorToViewport = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    setFloorZoom(clampFloorZoom(viewport.clientWidth / floorBaseWidth));
+  }, [floorBaseWidth]);
 
   const updateFloorSettings = (patch: Partial<FloorSettings>) => {
     const next = { ...floorSettingsRef.current, ...patch };
@@ -795,6 +829,7 @@ function AllTablesGrid({
 
   const startMarqueeSelection = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!editable || event.button !== 0 || event.target !== event.currentTarget) return;
+    if (isMobileView && event.pointerType === 'touch') return;
     const point = getCanvasPoint(event);
     if (!point) return;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -1079,7 +1114,22 @@ function AllTablesGrid({
         </div>
       </header>
       <div className="seat-floorplan-editor">
-        {editable && <aside className="seat-floorplan-palette" aria-label="Elementos del salón">
+        {isMobileView && (
+          <div className="seat-floorplan-mobile-bar" role="toolbar" aria-label="Controles del plano">
+            {editable && (
+              <button type="button" aria-expanded={mobilePaletteOpen} aria-controls={`floorplan-palette-${eventId}`} onClick={() => setMobilePaletteOpen((open) => !open)}>
+                <Plus size={15} aria-hidden /> Elementos
+              </button>
+            )}
+            <div className="seat-floorplan-zoom">
+              <button type="button" aria-label="Alejar el plano" disabled={floorZoom <= MOBILE_ZOOM_MIN} onClick={() => setFloorZoom((zoom) => clampFloorZoom(zoom / MOBILE_ZOOM_STEP))}><ZoomOut size={15} aria-hidden /></button>
+              <output aria-label="Nivel de acercamiento">{Math.round(floorZoom * 100)}%</output>
+              <button type="button" aria-label="Acercar el plano" disabled={floorZoom >= MOBILE_ZOOM_MAX} onClick={() => setFloorZoom((zoom) => clampFloorZoom(zoom * MOBILE_ZOOM_STEP))}><ZoomIn size={15} aria-hidden /></button>
+              <button type="button" onClick={fitFloorToViewport}>Ajustar</button>
+            </div>
+          </div>
+        )}
+        {editable && <aside id={`floorplan-palette-${eventId}`} className={`seat-floorplan-palette${isMobileView && !mobilePaletteOpen ? ' is-collapsed' : ''}`} aria-label="Elementos del salón">
           <strong>Agregar al salón</strong>
           <span>Dimensiones aproximadas</span>
           <div className="seat-floorplan-orientation" role="group" aria-label="Orientación del salón">
@@ -1132,82 +1182,90 @@ function AllTablesGrid({
             <button type="button" className="seat-floorplan-reset" onClick={onRequestClearSeating}>Vaciar acomodo</button>
           </details>
         </aside>}
-        <div ref={canvasRef} className={`seat-floorplan-room seat-floorplan-dynamic-room is-${floorSettings.orientation}`} style={{ aspectRatio: `${floorSettings.width} / ${floorSettings.height}` }} onContextMenu={openCanvasMenu} onPointerDown={editable ? startMarqueeSelection : undefined} onPointerMove={editable ? (event) => { resizeRoom(event); resizeItem(event); onCanvasMove(event); resizeMarqueeSelection(event); } : undefined} onPointerUp={(event) => { finishMarqueeSelection(event); setAlignmentGuides(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }} onPointerCancel={() => { marqueeRef.current = null; setSelectionBox(null); setAlignmentGuides(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }}>
-          {!hydrated && <span className="seat-floorplan-loading">Preparando plano…</span>}
-          {editable && <button
-            type="button"
-            className="seat-floorplan-resize"
-            aria-label="Cambiar ancho y alto del salón"
-            title="Arrastra para cambiar el tamaño del salón"
-            onPointerDown={startRoomResize}
-            onKeyDown={(event) => {
-              const change = event.key === 'ArrowRight' ? { width: floorSettings.width + 1 } : event.key === 'ArrowLeft' ? { width: floorSettings.width - 1 } : event.key === 'ArrowDown' ? { height: floorSettings.height + 1 } : event.key === 'ArrowUp' ? { height: floorSettings.height - 1 } : null;
-              if (!change) return;
-              event.preventDefault();
-              updateFloorSettings({
-                width: Math.min(100, Math.max(4, change.width ?? floorSettings.width)),
-                height: Math.min(100, Math.max(4, change.height ?? floorSettings.height)),
-              });
-            }}
-          ><span aria-hidden>↘</span></button>}
-          {canvasMenu && (
-            <div className="seat-floorplan-context-menu" role="menu" aria-label="Agregar elemento al salón" style={{ left: `${canvasMenu.x}%`, top: `${canvasMenu.y}%` }} onClick={(event) => event.stopPropagation()}>
-              <strong>Agregar aquí</strong>
-              <div>
-                {copiedItem && (
-                  <button type="button" role="menuitem" className="seat-floorplan-paste-here" onClick={() => void pasteCopiedElement(canvasMenu)}>
-                    <Copy size={15} aria-hidden />
-                    <span>Pegar copia aquí</span>
-                  </button>
-                )}
-                {FLOOR_ITEM_CATALOG.map((kind) => (
-                  <button key={kind} type="button" role="menuitem" onClick={() => addFromCanvasMenu(kind)}>
-                    {React.createElement(FLOOR_ITEM_ICON[kind], { size: 15, 'aria-hidden': true })}
-                    <span>{FLOOR_ITEM_LABEL[kind]}</span>
-                  </button>
-                ))}
-              </div>
-              <button type="button" className="seat-floorplan-context-cancel" onClick={() => setCanvasMenu(null)}>Cancelar</button>
+        <div ref={viewportRef} className={`seat-floorplan-canvas${isMobileView ? ' is-mobile-view' : ''}`}>
+          <div
+            className="seat-floorplan-canvas-inner"
+            style={{ '--floor-base-width': `${floorBaseWidth}px`, '--floor-ratio': Math.max(1, floorSettings.width) / Math.max(1, floorSettings.height), '--floor-zoom': floorZoom } as React.CSSProperties}
+          >
+            <div ref={canvasRef} className={`seat-floorplan-room seat-floorplan-dynamic-room is-${floorSettings.orientation}`} style={{ aspectRatio: `${floorSettings.width} / ${floorSettings.height}` }} onContextMenu={openCanvasMenu} onPointerDown={editable ? startMarqueeSelection : undefined} onPointerMove={editable ? (event) => { resizeRoom(event); resizeItem(event); onCanvasMove(event); resizeMarqueeSelection(event); } : undefined} onPointerUp={(event) => { finishMarqueeSelection(event); setAlignmentGuides(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }} onPointerCancel={() => { marqueeRef.current = null; setSelectionBox(null); setAlignmentGuides(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }}>
+              {!hydrated && <span className="seat-floorplan-loading">Preparando plano…</span>}
+              {editable && <button
+                type="button"
+                className="seat-floorplan-resize"
+                aria-label="Cambiar ancho y alto del salón"
+                title="Arrastra para cambiar el tamaño del salón"
+                onPointerDown={startRoomResize}
+                onKeyDown={(event) => {
+                  const change = event.key === 'ArrowRight' ? { width: floorSettings.width + 1 } : event.key === 'ArrowLeft' ? { width: floorSettings.width - 1 } : event.key === 'ArrowDown' ? { height: floorSettings.height + 1 } : event.key === 'ArrowUp' ? { height: floorSettings.height - 1 } : null;
+                  if (!change) return;
+                  event.preventDefault();
+                  updateFloorSettings({
+                    width: Math.min(100, Math.max(4, change.width ?? floorSettings.width)),
+                    height: Math.min(100, Math.max(4, change.height ?? floorSettings.height)),
+                  });
+                }}
+              ><span aria-hidden>↘</span></button>}
+              {canvasMenu && (
+                <div className="seat-floorplan-context-menu" role="menu" aria-label="Agregar elemento al salón" style={{ left: `${canvasMenu.x}%`, top: `${canvasMenu.y}%` }} onClick={(event) => event.stopPropagation()}>
+                  <strong>Agregar aquí</strong>
+                  <div>
+                    {copiedItem && (
+                      <button type="button" role="menuitem" className="seat-floorplan-paste-here" onClick={() => void pasteCopiedElement(canvasMenu)}>
+                        <Copy size={15} aria-hidden />
+                        <span>Pegar copia aquí</span>
+                      </button>
+                    )}
+                    {FLOOR_ITEM_CATALOG.map((kind) => (
+                      <button key={kind} type="button" role="menuitem" onClick={() => addFromCanvasMenu(kind)}>
+                        {React.createElement(FLOOR_ITEM_ICON[kind], { size: 15, 'aria-hidden': true })}
+                        <span>{FLOOR_ITEM_LABEL[kind]}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" className="seat-floorplan-context-cancel" onClick={() => setCanvasMenu(null)}>Cancelar</button>
+                </div>
+              )}
+              {selectionBox && <span className="seat-floorplan-selection-box" aria-hidden style={{ left: `${Math.min(selectionBox.startX, selectionBox.x)}%`, top: `${Math.min(selectionBox.startY, selectionBox.y)}%`, width: `${Math.abs(selectionBox.x - selectionBox.startX)}%`, height: `${Math.abs(selectionBox.y - selectionBox.startY)}%` }} />}
+              {alignmentGuides?.x != null && <span className="seat-floorplan-align-guide is-vertical" aria-hidden style={{ left: `${alignmentGuides.x}%` }} />}
+              {alignmentGuides?.y != null && <span className="seat-floorplan-align-guide is-horizontal" aria-hidden style={{ top: `${alignmentGuides.y}%` }} />}
+              {items.map((item) => {
+                const table = item.tableId != null ? tables.find((current) => current.id === item.tableId) : undefined;
+                return (
+                  <div key={item.id} className={`seat-floor-item seat-floor-item-${item.kind}${selectedItemIds.has(item.id) ? ' is-selected' : ''}${item.groupId ? ' is-grouped' : ''}${item.locked ? ' is-locked' : ''}`} onPointerDown={(event) => selectItem(event, item.id)} style={{ left: `${item.x}%`, top: `${item.y}%`, '--floor-item-scale': item.scale ?? 1, '--floor-item-rotation': `${item.rotation ?? 0}deg`, '--floor-item-offset-x': item.x === 0 ? '0%' : item.x === 100 ? '-100%' : '-50%', '--floor-item-offset-y': item.y === 0 ? '0%' : item.y === 100 ? '-100%' : '-50%' } as React.CSSProperties}>
+                    {editable && !item.locked && <button type="button" className="seat-floor-item-drag" aria-label={`Mover ${item.label}`} onPointerDown={(event) => moveItem(event, item.id)}><GripVertical size={14} aria-hidden /></button>}
+                    {editable && <button type="button" className="seat-floor-item-copy" aria-label={`Copiar ${item.label}`} title="Copiar elemento" onClick={() => copyElement(item)}><Copy size={13} aria-hidden /></button>}
+                    {editable && !item.locked && <button type="button" className="seat-floor-item-rotate" aria-label={`Girar ${item.label} 90 grados`} title="Girar 90 grados" onClick={() => rotateItem(item)}><RotateCw size={14} aria-hidden /></button>}
+                    {editable && !item.locked && <button type="button" className="seat-floor-item-resize" aria-label={`Cambiar tamaño de ${item.label}`} title="Arrastra para cambiar tamaño; se usará en nuevos elementos del mismo tipo" onPointerDown={(event) => startItemResize(event, item)}>↘</button>}
+                    {editable && item.locked && <span className="seat-floor-item-lock" title="Elemento bloqueado"><Lock size={13} aria-hidden /></span>}
+                    {table ? (
+                      <TableCard table={table} families={familiesByTable.get(table.id) || []} shape={item.kind as TableShape} onDelete={onDeleteTable} onRename={onRenameTable} onSelectTable={onSelectTable} onSelectFamily={onSelectFamily} editable={editable && !item.locked} />
+                    ) : item.kind === 'lineHorizontal' || item.kind === 'lineVertical' || item.kind === 'block' ? (
+                      <div className={`seat-floor-geometry is-${item.kind}`} aria-label={item.label}>
+                        {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
+                        <span>{item.kind === 'block' ? 'Bloque' : 'Línea'}</span>
+                      </div>
+                    ) : item.kind === 'entrance' ? (
+                      <div className="seat-floor-door" aria-label="Entrada">
+                        {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label="Eliminar entrada" onClick={() => removeElement(item)}>×</button>}
+                        <span className="seat-floor-door-arc" aria-hidden />
+                        <span className="seat-floor-door-leaf" aria-hidden />
+                        <strong>Entrada</strong>
+                      </div>
+                    ) : (
+                      <div className="seat-floor-object">
+                        {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
+                        {React.createElement(FLOOR_ITEM_ICON[item.kind], { size: 23, strokeWidth: 1.8, 'aria-hidden': true })}
+                        <strong>{item.label}</strong>
+                        <small>{item.kind === 'dj' ? 'Sonido y cabina' : item.kind === 'band' ? 'Música en vivo' : item.kind === 'stage' ? 'Ceremonia y discursos' : item.kind === 'lounge' ? 'Zona de descanso' : item.kind === 'giftTable' ? 'Sobres y obsequios' : item.kind === 'kitchen' ? 'Servicio de alimentos' : item.kind === 'playArea' || item.kind === 'bouncyCastle' ? 'Zona infantil' : 'Elemento del salón'}</small>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
-          {selectionBox && <span className="seat-floorplan-selection-box" aria-hidden style={{ left: `${Math.min(selectionBox.startX, selectionBox.x)}%`, top: `${Math.min(selectionBox.startY, selectionBox.y)}%`, width: `${Math.abs(selectionBox.x - selectionBox.startX)}%`, height: `${Math.abs(selectionBox.y - selectionBox.startY)}%` }} />}
-          {alignmentGuides?.x != null && <span className="seat-floorplan-align-guide is-vertical" aria-hidden style={{ left: `${alignmentGuides.x}%` }} />}
-          {alignmentGuides?.y != null && <span className="seat-floorplan-align-guide is-horizontal" aria-hidden style={{ top: `${alignmentGuides.y}%` }} />}
-          {items.map((item) => {
-            const table = item.tableId != null ? tables.find((current) => current.id === item.tableId) : undefined;
-            return (
-              <div key={item.id} className={`seat-floor-item seat-floor-item-${item.kind}${selectedItemIds.has(item.id) ? ' is-selected' : ''}${item.groupId ? ' is-grouped' : ''}${item.locked ? ' is-locked' : ''}`} onPointerDown={(event) => selectItem(event, item.id)} style={{ left: `${item.x}%`, top: `${item.y}%`, '--floor-item-scale': item.scale ?? 1, '--floor-item-rotation': `${item.rotation ?? 0}deg`, '--floor-item-offset-x': item.x === 0 ? '0%' : item.x === 100 ? '-100%' : '-50%', '--floor-item-offset-y': item.y === 0 ? '0%' : item.y === 100 ? '-100%' : '-50%' } as React.CSSProperties}>
-                {editable && !item.locked && <button type="button" className="seat-floor-item-drag" aria-label={`Mover ${item.label}`} onPointerDown={(event) => moveItem(event, item.id)}><GripVertical size={14} aria-hidden /></button>}
-                {editable && <button type="button" className="seat-floor-item-copy" aria-label={`Copiar ${item.label}`} title="Copiar elemento" onClick={() => copyElement(item)}><Copy size={13} aria-hidden /></button>}
-                {editable && !item.locked && <button type="button" className="seat-floor-item-rotate" aria-label={`Girar ${item.label} 90 grados`} title="Girar 90 grados" onClick={() => rotateItem(item)}><RotateCw size={14} aria-hidden /></button>}
-                {editable && !item.locked && <button type="button" className="seat-floor-item-resize" aria-label={`Cambiar tamaño de ${item.label}`} title="Arrastra para cambiar tamaño; se usará en nuevos elementos del mismo tipo" onPointerDown={(event) => startItemResize(event, item)}>↘</button>}
-                {editable && item.locked && <span className="seat-floor-item-lock" title="Elemento bloqueado"><Lock size={13} aria-hidden /></span>}
-                {table ? (
-                  <TableCard table={table} families={familiesByTable.get(table.id) || []} shape={item.kind as TableShape} onDelete={onDeleteTable} onRename={onRenameTable} onSelectTable={onSelectTable} onSelectFamily={onSelectFamily} editable={editable && !item.locked} />
-                ) : item.kind === 'lineHorizontal' || item.kind === 'lineVertical' || item.kind === 'block' ? (
-                  <div className={`seat-floor-geometry is-${item.kind}`} aria-label={item.label}>
-                    {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
-                    <span>{item.kind === 'block' ? 'Bloque' : 'Línea'}</span>
-                  </div>
-                ) : item.kind === 'entrance' ? (
-                  <div className="seat-floor-door" aria-label="Entrada">
-                    {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label="Eliminar entrada" onClick={() => removeElement(item)}>×</button>}
-                    <span className="seat-floor-door-arc" aria-hidden />
-                    <span className="seat-floor-door-leaf" aria-hidden />
-                    <strong>Entrada</strong>
-                  </div>
-                ) : (
-                  <div className="seat-floor-object">
-                    {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
-                    {React.createElement(FLOOR_ITEM_ICON[item.kind], { size: 23, strokeWidth: 1.8, 'aria-hidden': true })}
-                    <strong>{item.label}</strong>
-                    <small>{item.kind === 'dj' ? 'Sonido y cabina' : item.kind === 'band' ? 'Música en vivo' : item.kind === 'stage' ? 'Ceremonia y discursos' : item.kind === 'lounge' ? 'Zona de descanso' : item.kind === 'giftTable' ? 'Sobres y obsequios' : item.kind === 'kitchen' ? 'Servicio de alimentos' : item.kind === 'playArea' || item.kind === 'bouncyCastle' ? 'Zona infantil' : 'Elemento del salón'}</small>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          </div>
         </div>
+        {isMobileView && <p className="seat-floorplan-hint">Desliza sobre el plano para recorrerlo a lo ancho y a lo alto. Usa − y + para acercar, o «Ajustar» para ver el salón completo.</p>}
         {editable && selectedItemIds.size > 0 && <div className="seat-floorplan-selection-toolbar" role="toolbar" aria-label="Acciones de la selección">
           <span>{selectedItemIds.size} {selectedItemIds.size === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}{selectedLockedCount ? ` · ${selectedLockedCount} bloqueado${selectedLockedCount === 1 ? '' : 's'}` : ''}</span>
           <button type="button" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}><Group size={15} aria-hidden /> Agrupar</button>

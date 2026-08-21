@@ -64,6 +64,7 @@ export async function GET(request: Request) {
         isChild: g.isChild,
         mealType: g.mealType,
         confirmed: g.confirmed,
+        tableId: g.tableId ?? null,
       })),
     }));
 
@@ -82,6 +83,12 @@ export async function DELETE(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
+    const guestId = Number(searchParams.get('guestId'));
+    if (Number.isInteger(guestId) && guestId > 0) {
+      await prisma.guest.delete({ where: { id: guestId } });
+      return NextResponse.json({ success: true });
+    }
+
     const id = searchParams.get('id');
 
     if (!id) {

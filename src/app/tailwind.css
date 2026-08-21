@@ -4402,6 +4402,14 @@ body { overflow-x: clip; }
 .seat-step.is-active .seat-step-count { color: inherit; opacity: 0.75; }
 .seat-step-content { min-width: 0; }
 .seat-assignment-side-picker { display: flex; gap: .5rem; margin: 0 0 .85rem; }
+.seat-assignment-workspace { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); align-items: start; gap: 1rem; }
+.seat-assignment-panel { position: sticky; top: 1rem; padding: 1.25rem; border: 1px solid #dbe5ee; border-radius: 16px; background: #fff; box-shadow: 0 10px 28px rgba(23, 32, 51, .06); }
+.seat-assignment-panel h2 { margin: 0; }
+.seat-assignment-workspace .seat-floorplan { min-width: 0; margin-top: 0; }
+.seat-floorplan-reference { padding: 1rem; border: 1px solid #dbe5ee; border-radius: 16px; background: linear-gradient(145deg, #f8fbff, #fff); }
+.seat-floorplan-reference .seat-floorplan-header { margin-bottom: .75rem; }
+.seat-floorplan-reference .seat-floorplan-editor { grid-template-columns: minmax(0, 1fr); min-height: 520px; }
+.seat-floorplan-reference .seat-floorplan-room { min-height: 520px; border-radius: 12px; }
 .seat-assignment-side-picker button { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .7rem; border: 1px solid #d9e2eb; border-radius: 8px; background: #fff; color: #64748b; cursor: pointer; font-size: .78rem; font-weight: 750; }
 .seat-assignment-side-picker button.is-active { background: #f8fafc; }
 
@@ -4590,6 +4598,10 @@ body { overflow-x: clip; }
   color: #64748b; font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
 }
 @media (max-width: 760px) {
+  .seat-assignment-workspace { grid-template-columns: 1fr; gap: .85rem; }
+  .seat-assignment-panel { position: static; padding: 1rem; }
+  .seat-floorplan-reference { padding: .8rem; }
+  .seat-floorplan-reference .seat-floorplan-editor, .seat-floorplan-reference .seat-floorplan-room { min-height: 380px; }
   .seat-floorplan-header { align-items: start; flex-direction: column; }
   .seat-floorplan-header p { text-align: left; }
   .seat-floorplan-guidance { justify-items: start; }

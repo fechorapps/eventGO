@@ -72,6 +72,7 @@ import {
   Ungroup,
   ZoomIn,
   ZoomOut,
+  Search,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -83,6 +84,7 @@ interface Guest {
   name: string;
   isChild: boolean;
   confirmed: boolean | null;
+  tableId: number | null;
 }
 
 interface Family {
@@ -355,6 +357,7 @@ function TableCard({
   onSelectTable,
   onSelectFamily,
   shape,
+  editable = true,
 }: {
   table: TableRow;
   families: Family[];
@@ -363,6 +366,7 @@ function TableCard({
   onSelectTable: (t: TableRow) => void;
   onSelectFamily: (f: Family) => void;
   shape?: TableShape;
+  editable?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `table-${table.id}`,
@@ -394,7 +398,7 @@ function TableCard({
       className={`seat-table-card${isOver ? ' is-over' : ''}`}
       style={{ boxShadow: isOver ? `0 0 0 2px ${color}66, 0 8px 20px rgba(0,0,0,0.08)` : undefined }}
     >
-      <button
+      {editable && <button
         type="button"
         className="seat-table-delete"
         onClick={() => onDelete(table.id)}
@@ -402,7 +406,7 @@ function TableCard({
         aria-label={`Eliminar ${table.name}`}
       >
         <Trash2 size={14} />
-      </button>
+      </button>}
 
       <div onClick={() => onSelectTable(table)} style={{ cursor: 'pointer' }} title="Ver lista de invitados">
         <TableViz seats={table.seats} guests={seatNames} color={color} isOver={isOver} shape={shape} />
@@ -424,6 +428,8 @@ function TableCard({
           }}
           maxLength={40}
         />
+      ) : !editable ? (
+        <span className="seat-table-name">{table.name}</span>
       ) : (
         <button
           type="button"
@@ -555,6 +561,7 @@ function AllTablesGrid({
   onRequestClearSeating,
   resetRevision,
   editable = true,
+  variant = 'default',
 }: {
   tables: TableRow[];
   familiesByTable: Map<number, Family[]>;
@@ -567,6 +574,7 @@ function AllTablesGrid({
   onRequestClearSeating: () => void;
   resetRevision: number;
   editable?: boolean;
+  variant?: 'default' | 'reference';
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<FloorItem[]>([]);
@@ -956,14 +964,14 @@ function AllTablesGrid({
   }, [copiedItem, editable, pasteCopiedElement]);
 
   return (
-    <section className="seat-floorplan" aria-label="Plano visual del salón">
+    <section className={`seat-floorplan${variant === 'reference' ? ' seat-floorplan-reference' : ''}`} aria-label="Plano visual del salón">
       <header className="seat-floorplan-header">
         <div>
-          <span className="seat-floorplan-eyebrow">Vista del salón</span>
-          <h2>Plano de recepción</h2>
+          <span className="seat-floorplan-eyebrow">{variant === 'reference' ? 'Referencia en vivo' : 'Vista del salón'}</span>
+          <h2>{variant === 'reference' ? 'Ubica mesas mientras asignas' : 'Plano de recepción'}</h2>
         </div>
         <div className="seat-floorplan-guidance">
-          <p>Agrega mesas primero; después usa el plano para ajustar la distribución. También puedes hacer clic derecho en un espacio vacío.</p>
+          <p>{variant === 'reference' ? 'Este es el mismo acomodo creado en el primer paso. Selecciona una mesa para ver quién está sentado.' : 'Agrega mesas primero; después usa el plano para ajustar la distribución. También puedes hacer clic derecho en un espacio vacío.'}</p>
           {editable && <div className="seat-floorplan-save-status" aria-live="polite"><span>Guardado en este dispositivo</span><button type="button" disabled={!undoCount} onClick={undoLastLayoutChange}>Deshacer</button></div>}
         </div>
       </header>
@@ -1069,7 +1077,7 @@ function AllTablesGrid({
                 {editable && <button type="button" className="seat-floor-item-rotate" aria-label={`Girar ${item.label} 90 grados`} title="Girar 90 grados" onClick={() => rotateItem(item)}><RotateCw size={14} aria-hidden /></button>}
                 {editable && <button type="button" className="seat-floor-item-resize" aria-label={`Cambiar tamaño de ${item.label}`} title="Arrastra para cambiar tamaño; se usará en nuevos elementos del mismo tipo" onPointerDown={(event) => startItemResize(event, item)}>↘</button>}
                 {table ? (
-                  <TableCard table={table} families={familiesByTable.get(table.id) || []} shape={item.kind as TableShape} onDelete={onDeleteTable} onRename={onRenameTable} onSelectTable={onSelectTable} onSelectFamily={onSelectFamily} />
+                  <TableCard table={table} families={familiesByTable.get(table.id) || []} shape={item.kind as TableShape} onDelete={onDeleteTable} onRename={onRenameTable} onSelectTable={onSelectTable} onSelectFamily={onSelectFamily} editable={editable} />
                 ) : item.kind === 'entrance' ? (
                   <div className="seat-floor-door" aria-label="Entrada">
                     {editable && <button type="button" className="seat-floor-item-remove" aria-label="Eliminar entrada" onClick={() => removeElement(item)}>×</button>}
@@ -1253,15 +1261,17 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState<number | null>(null);
   const [step, setStep] = useState<Step>('LAYOUT');
-  const [assignmentSide, setAssignmentSide] = useState<Side>('MAMA');
+  const [assignmentMode, setAssignmentMode] = useState<'FAMILY' | 'GUEST'>('FAMILY');
+  const [assignmentQuery, setAssignmentQuery] = useState('');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Estados para modales en móvil
   const [mobileFamilySelect, setMobileFamilySelect] = useState<Family | null>(null);
+  const [mobileGuestSelect, setMobileGuestSelect] = useState<{ guest: Guest; family: Family } | null>(null);
   const [mobileTableSelect, setMobileTableSelect] = useState<TableRow | null>(null);
   const [seatDraft, setSeatDraft] = useState<number | null>(null);
-  const [confirmation, setConfirmation] = useState<{ kind: 'clear' } | { kind: 'table'; tableId: number } | null>(null);
+  const [confirmation, setConfirmation] = useState<{ kind: 'clear' } | { kind: 'table'; tableId: number } | { kind: 'guest'; guest: Guest } | null>(null);
   const [layoutResetRevision, setLayoutResetRevision] = useState(0);
 
   const sensors = useSensors(
@@ -1318,14 +1328,17 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     };
   }, [exportMenuOpen]);
 
-  const unassigned = useMemo(() => families.filter((f) => f.tableId == null), [families]);
   const familiesByTable = useMemo(() => {
     const map = new Map<number, Family[]>();
     for (const f of families) {
-      if (f.tableId != null) {
-        const arr = map.get(f.tableId) || [];
-        arr.push(f);
-        map.set(f.tableId, arr);
+      for (const guest of f.guests) {
+        if (guest.tableId != null) {
+          const arr = map.get(guest.tableId) || [];
+          const entry = arr.find((family) => family.id === f.id);
+          if (entry) entry.guests.push(guest);
+          else arr.push({ ...f, tableId: guest.tableId, guests: [guest] });
+          map.set(guest.tableId, arr);
+        }
       }
     }
     return map;
@@ -1333,15 +1346,15 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
   const totalGuests = useMemo(() => families.reduce((s, f) => s + headcount(f), 0), [families]);
   const seatedGuests = useMemo(
-    () => families.filter((f) => f.tableId != null).reduce((s, f) => s + headcount(f), 0),
+    () => families.reduce((sum, family) => sum + family.guests.filter((guest) => guest.tableId != null).length, 0),
     [families]
   );
 
   const totalSeats = useMemo(() => tables.reduce((sum, table) => sum + table.seats, 0), [tables]);
 
   const unassignedGuests = useMemo(
-    () => unassigned.reduce((sum, family) => sum + headcount(family), 0),
-    [unassigned]
+    () => families.reduce((sum, family) => sum + family.guests.filter((guest) => guest.tableId == null).length, 0),
+    [families]
   );
 
   const overCapacityTables = useMemo(
@@ -1349,10 +1362,11 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     [familiesByTable, tables]
   );
 
-  const unassignedForAssignment = useMemo(
-    () => unassigned.filter((family) => family.side == null || family.side === assignmentSide),
-    [unassigned, assignmentSide]
-  );
+  const assignmentFamilies = useMemo(() => {
+    const query = assignmentQuery.trim().toLocaleLowerCase('es-MX');
+    return families.filter((family) => !query || family.familyName.toLocaleLowerCase('es-MX').includes(query) || family.guests.some((guest) => guest.name.toLocaleLowerCase('es-MX').includes(query)));
+  }, [families, assignmentQuery]);
+  const assignmentGuests = useMemo(() => assignmentFamilies.flatMap((family) => family.guests.map((guest) => ({ family, guest }))), [assignmentFamilies]);
 
   // --- API helpers ---
   async function assign(rsvpId: number, tableId: number | null) {
@@ -1365,9 +1379,21 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     if (!res.ok || !data.success) {
       throw new Error(data.error || 'No se pudo asignar la familia.');
     }
-    setFamilies((prev) =>
-      prev.map((f) => (f.id === rsvpId ? { ...f, tableId: data.rsvp.tableId, side: data.rsvp.side } : f))
-    );
+    setFamilies((prev) => prev.map((f) => f.id === rsvpId ? { ...f, tableId: data.rsvp.tableId, side: data.rsvp.side, guests: f.guests.map((guest) => ({ ...guest, tableId })) } : f));
+  }
+
+  async function assignGuest(guestId: number, tableId: number | null) {
+    const res = await fetch('/api/admin/seating', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ guestId, tableId }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'No se pudo asignar al invitado.');
+    setFamilies((prev) => prev.map((family) => family.id === data.rsvp.id ? { ...family, tableId: data.rsvp.tableId, side: data.rsvp.side, guests: family.guests.map((guest) => guest.id === guestId ? { ...guest, tableId: data.guest.tableId } : guest) } : family));
+  }
+
+  async function deleteGuest(guestId: number) {
+    const res = await fetch(`/api/admin/rsvps?guestId=${guestId}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'No se pudo eliminar al invitado.');
+    setFamilies((prev) => prev.map((family) => ({ ...family, guests: family.guests.filter((guest) => guest.id !== guestId) })).filter((family) => family.guests.length > 0));
   }
 
   async function addTable(side: TableSide = 'UNASSIGNED', seats = 12) {
@@ -1392,7 +1418,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
       const res = await fetch(`/api/admin/tables?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       setTables((prev) => prev.filter((t) => t.id !== id));
-      setFamilies((prev) => prev.map((f) => (f.tableId === id ? { ...f, tableId: null } : f)));
+      setFamilies((prev) => prev.map((f) => ({ ...f, tableId: f.tableId === id ? null : f.tableId, guests: f.guests.map((guest) => guest.tableId === id ? { ...guest, tableId: null } : guest) })));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo eliminar la mesa.');
     }
@@ -1404,7 +1430,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setTables([]);
-      setFamilies((previous) => previous.map((family) => ({ ...family, tableId: null })));
+      setFamilies((previous) => previous.map((family) => ({ ...family, tableId: null, guests: family.guests.map((guest) => ({ ...guest, tableId: null })) })));
       setMobileTableSelect(null);
       setMobileFamilySelect(null);
       return true;
@@ -1422,7 +1448,10 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
       if (await clearSeating()) setLayoutResetRevision((revision) => revision + 1);
       return;
     }
-    await deleteTable(pending.tableId);
+    if (pending.kind === 'table') await deleteTable(pending.tableId);
+    if (pending.kind === 'guest') {
+      try { await deleteGuest(pending.guest.id); } catch (error) { setError(error instanceof Error ? error.message : 'No se pudo eliminar al invitado.'); }
+    }
   };
 
   async function renameTable(id: number, name: string) {
@@ -1505,7 +1534,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   const exportHostessPdf = () => {
     const tableById = new Map(tables.map((table) => [table.id, table]));
     const rows = families
-      .flatMap((family) => family.guests.filter((guest) => guest.confirmed !== false).map((guest) => ({ guest, family, table: family.tableId ? tableById.get(family.tableId) : undefined })))
+      .flatMap((family) => family.guests.filter((guest) => guest.confirmed !== false).map((guest) => ({ guest, family, table: guest.tableId ? tableById.get(guest.tableId) : undefined })))
       .sort((a, b) => a.guest.name.localeCompare(b.guest.name, 'es-MX', { sensitivity: 'base' }))
       .map(({ guest, family, table }) => `<tr class="${table ? '' : 'unassigned'}"><td>${escapeHtml(guest.name)}${guest.isChild ? ' <span>Niño</span>' : ''}</td><td>${escapeHtml(family.familyName)}</td><td>${table ? `Mesa ${table.position} · ${escapeHtml(table.name)}` : 'SIN MESA'}</td></tr>`)
       .join('');
@@ -1524,7 +1553,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     const tableById = new Map(tables.map((table) => [table.id, table]));
     const quoteCsv = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
     const rows = families
-      .flatMap((family) => family.guests.map((guest) => ({ guest, family, table: family.tableId ? tableById.get(family.tableId) : undefined })))
+      .flatMap((family) => family.guests.map((guest) => ({ guest, family, table: guest.tableId ? tableById.get(guest.tableId) : undefined })))
       .sort((a, b) => a.guest.name.localeCompare(b.guest.name, 'es-MX', { sensitivity: 'base' }))
       .map(({ guest, family, table }) => [
         guest.name,
@@ -1655,26 +1684,22 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
           )}
 
           {step === 'ASSIGN' && (
-            <>
-              <div className="seat-assignment-side-picker" role="group" aria-label="Familias y mesas por lado">
-                {(['MAMA', 'PAPA'] as Side[]).map((side) => (
-                  <button key={side} type="button" className={assignmentSide === side ? 'is-active' : undefined} style={assignmentSide === side ? { borderColor: SIDE_COLOR[side], color: SIDE_COLOR[side] } : undefined} onClick={() => setAssignmentSide(side)}>
-                    <span className="seat-side-dot" style={{ background: SIDE_COLOR[side] }} aria-hidden /> Lado {SIDE_LABEL[side]}
-                  </button>
-                ))}
-              </div>
-              <UnassignedTray families={unassignedForAssignment} onSelectFamily={setMobileFamilySelect} />
-              <SideSection
-                side={assignmentSide}
-                tables={tables}
-                familiesByTable={familiesByTable}
-                onAddTable={addTable}
-                onDeleteTable={(tableId) => setConfirmation({ kind: 'table', tableId })}
-                onRenameTable={renameTable}
-                onSelectTable={setMobileTableSelect}
-                onSelectFamily={setMobileFamilySelect}
-              />
-            </>
+            <div className="seat-assignment-workspace">
+              <section className="seat-assignment-panel" aria-label="Asignar invitados">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div><h2 className="text-lg font-semibold text-slate-950">Asignar invitados</h2><p className="text-sm text-slate-500">Busca y asigna por familia completa o de forma individual.</p></div>
+                  <div className="flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Modo de asignación">
+                    {(['FAMILY', 'GUEST'] as const).map((mode) => <button key={mode} type="button" className={`rounded-lg px-3 py-2 text-sm font-medium ${assignmentMode === mode ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`} onClick={() => setAssignmentMode(mode)}>{mode === 'FAMILY' ? 'Por familia' : 'Individual'}</button>)}
+                  </div>
+                </div>
+                <label className="mt-5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500"><Search size={18} aria-hidden /><span className="sr-only">Buscar invitado o familia</span><input value={assignmentQuery} onChange={(event) => setAssignmentQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none" placeholder="Buscar por nombre o familia" /></label>
+                <div className="mt-4 max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-100">
+                  {assignmentMode === 'FAMILY' ? assignmentFamilies.map((family) => <div key={family.id} className="flex items-center gap-3 p-3"><span className="flex size-9 items-center justify-center rounded-full bg-slate-100 text-slate-600"><Users size={16} /></span><div className="min-w-0 flex-1"><strong className="block truncate text-sm text-slate-900">{family.familyName}</strong><span className="text-xs text-slate-500">{headcount(family)} invitados · {family.guests.filter((guest) => guest.tableId != null).length} asignados</span></div><button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setMobileFamilySelect(family)}>Asignar</button></div>) : assignmentGuests.map(({ family, guest }) => <div key={guest.id} className="flex items-center gap-3 p-3"><span className="flex size-9 items-center justify-center rounded-full bg-slate-100 text-slate-600"><Users size={16} /></span><div className="min-w-0 flex-1"><strong className="block truncate text-sm text-slate-900">{guest.name}</strong><span className="text-xs text-slate-500">{family.familyName} · {guest.tableId ? tables.find((table) => table.id === guest.tableId)?.name ?? 'Mesa asignada' : 'Sin mesa'}</span></div><button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setMobileGuestSelect({ guest, family })}>Asignar</button><button type="button" className="seat-icon-btn text-red-700" aria-label={`Eliminar a ${guest.name}`} onClick={() => setConfirmation({ kind: 'guest', guest })}><Trash2 size={16} /></button></div>)}
+                  {((assignmentMode === 'FAMILY' && assignmentFamilies.length === 0) || (assignmentMode === 'GUEST' && assignmentGuests.length === 0)) && <p className="p-6 text-center text-sm text-slate-500">No encontramos invitados con esa búsqueda.</p>}
+                </div>
+              </section>
+              <AllTablesGrid tables={tables} familiesByTable={familiesByTable} eventId={eventId} onAddTable={addTable} onDeleteTable={() => {}} onRenameTable={() => {}} onSelectTable={setMobileTableSelect} onSelectFamily={setMobileFamilySelect} onRequestClearSeating={() => {}} resetRevision={layoutResetRevision} editable={false} variant="reference" />
+            </div>
           )}
 
           {step === 'REVIEW' && (
@@ -1698,6 +1723,18 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
       </div>
 
       {/* MODAL: Mover familia (Bottom Sheet) */}
+      {mobileGuestSelect && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl">
+            <div className="mb-2 flex items-center justify-between"><h3 className="text-xl font-semibold text-slate-900">Asignar invitado</h3><button type="button" onClick={() => setMobileGuestSelect(null)} className="p-2 text-gray-400"><X size={22} /></button></div>
+            <p className="mb-6 text-sm text-gray-500"><strong>{mobileGuestSelect.guest.name}</strong> · {mobileGuestSelect.family.familyName}</p>
+            <div className="flex flex-col gap-3">
+              <button type="button" onClick={() => { void assignGuest(mobileGuestSelect.guest.id, null).then(() => setMobileGuestSelect(null)).catch((error) => setError(error.message)); }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-4 text-left"><span className="font-medium text-gray-700">Sin asignar</span>{mobileGuestSelect.guest.tableId == null && <CheckCircle2 size={20} />}</button>
+              {tables.map((table) => { const occupied = (familiesByTable.get(table.id) || []).reduce((sum, family) => sum + headcount(family), 0); return <button key={table.id} type="button" onClick={() => { void assignGuest(mobileGuestSelect.guest.id, table.id).then(() => setMobileGuestSelect(null)).catch((error) => setError(error.message)); }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 p-4 text-left hover:bg-slate-50"><span><strong className="block text-gray-800">{table.name}</strong><small className="text-gray-500">{occupied}/{table.seats} ocupados</small></span>{mobileGuestSelect.guest.tableId === table.id && <CheckCircle2 size={20} />}</button>; })}
+            </div>
+          </div>
+        </div>
+      )}
       {mobileFamilySelect && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 transition-opacity sm:items-center animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-8">
@@ -1824,11 +1861,11 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
       {confirmation && (
         <ConfirmationDialog
-          title={confirmation.kind === 'clear' ? '¿Vaciar todo el acomodo?' : '¿Eliminar esta mesa?'}
+          title={confirmation.kind === 'clear' ? '¿Vaciar todo el acomodo?' : confirmation.kind === 'guest' ? '¿Eliminar este invitado?' : '¿Eliminar esta mesa?'}
           description={confirmation.kind === 'clear'
             ? 'Se eliminarán todas las mesas, elementos del salón y asignaciones de familias. Los RSVP e invitados no se borrarán.'
-            : 'Las familias asignadas a esta mesa quedarán sin asignar.'}
-          confirmLabel={confirmation.kind === 'clear' ? 'Vaciar acomodo' : 'Eliminar mesa'}
+            : confirmation.kind === 'guest' ? `Se eliminará a ${confirmation.guest.name} de la lista de invitados. Esta acción no se puede deshacer.` : 'Las familias asignadas a esta mesa quedarán sin asignar.'}
+          confirmLabel={confirmation.kind === 'clear' ? 'Vaciar acomodo' : confirmation.kind === 'guest' ? 'Eliminar invitado' : 'Eliminar mesa'}
           onCancel={() => setConfirmation(null)}
           onConfirm={confirmPendingAction}
         />

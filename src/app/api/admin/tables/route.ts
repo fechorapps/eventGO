@@ -120,6 +120,7 @@ export async function PUT(request: Request) {
         where: { tableId: id, side: { not: data.side } },
         data: { tableId: null },
       });
+      await prisma.guest.updateMany({ where: { tableId: id }, data: { tableId: null } });
     }
 
     const table = await prisma.eventTable.update({ where: { id }, data });
@@ -161,6 +162,10 @@ export async function DELETE(request: Request) {
           where: { eventId, tableId: { not: null } },
           data: { tableId: null },
         });
+        await tx.guest.updateMany({
+          where: { rsvp: { eventId }, tableId: { not: null } },
+          data: { tableId: null },
+        });
         const deleted = await tx.eventTable.deleteMany({ where: { eventId } });
         return { unassigned: unassigned.count, deleted: deleted.count };
       });
@@ -187,6 +192,7 @@ export async function DELETE(request: Request) {
       }
       // No dependemos de que una instalación antigua tenga ON DELETE SET NULL.
       await tx.rsvp.updateMany({ where: { tableId: id }, data: { tableId: null } });
+      await tx.guest.updateMany({ where: { tableId: id }, data: { tableId: null } });
       await tx.eventTable.delete({ where: { id } });
     });
 

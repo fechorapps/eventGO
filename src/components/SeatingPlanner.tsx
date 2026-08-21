@@ -1021,13 +1021,6 @@ function AllTablesGrid({
             <button type="button" className="seat-floorplan-reset" onClick={onRequestClearSeating}>Vaciar acomodo</button>
           </details>
         </aside>}
-        {editable && selectedItemIds.size > 0 && <div className="seat-floorplan-selection-toolbar" role="toolbar" aria-label="Acciones de la selección">
-          <span>{selectedItemIds.size} {selectedItemIds.size === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}</span>
-          <button type="button" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}><Group size={15} aria-hidden /> Agrupar</button>
-          <button type="button" disabled={!selectedGroupCount} onClick={ungroupSelectedItems}><Ungroup size={15} aria-hidden /> Desagrupar</button>
-          <button type="button" onClick={() => resizeSelectedItems(1.1)}><ZoomIn size={15} aria-hidden /> Ampliar</button>
-          <button type="button" onClick={() => resizeSelectedItems(1 / 1.1)}><ZoomOut size={15} aria-hidden /> Reducir</button>
-        </div>}
         <div ref={canvasRef} className={`seat-floorplan-room seat-floorplan-dynamic-room is-${floorSettings.orientation}`} style={{ aspectRatio: `${floorSettings.width} / ${floorSettings.height}` }} onContextMenu={openCanvasMenu} onPointerDown={editable ? startMarqueeSelection : undefined} onPointerMove={editable ? (event) => { resizeRoom(event); resizeItem(event); onCanvasMove(event); resizeMarqueeSelection(event); } : undefined} onPointerUp={(event) => { finishMarqueeSelection(event); dragRef.current = null; stopRoomResize(); stopItemResize(); }} onPointerCancel={() => { marqueeRef.current = null; setSelectionBox(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }}>
           {!hydrated && <span className="seat-floorplan-loading">Preparando plano…</span>}
           {editable && <button
@@ -1096,6 +1089,13 @@ function AllTablesGrid({
             );
           })}
         </div>
+        {editable && selectedItemIds.size > 0 && <div className="seat-floorplan-selection-toolbar" role="toolbar" aria-label="Acciones de la selección">
+          <span>{selectedItemIds.size} {selectedItemIds.size === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}</span>
+          <button type="button" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}><Group size={15} aria-hidden /> Agrupar</button>
+          <button type="button" disabled={!selectedGroupCount} onClick={ungroupSelectedItems}><Ungroup size={15} aria-hidden /> Desagrupar</button>
+          <button type="button" onClick={() => resizeSelectedItems(1.1)}><ZoomIn size={15} aria-hidden /> Ampliar</button>
+          <button type="button" onClick={() => resizeSelectedItems(1 / 1.1)}><ZoomOut size={15} aria-hidden /> Reducir</button>
+        </div>}
       </div>
       {tableBatchRequest && (
         <div className="seat-table-batch-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !addingTables) setTableBatchRequest(null); }}>

@@ -73,6 +73,11 @@ import {
   ZoomIn,
   ZoomOut,
   Search,
+  Minus,
+  Lock,
+  Unlock,
+  ArrowUp,
+  ArrowDown,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -110,7 +115,7 @@ interface SeatingPlannerProps {
 
 type TableShape = 'round' | 'square' | 'rectangle' | 'imperial';
 const TABLE_SHAPES: TableShape[] = ['round', 'square', 'rectangle', 'imperial'];
-type FloorItemKind = TableShape | 'dancefloor' | 'dj' | 'band' | 'desserts' | 'mixology' | 'bar' | 'stage' | 'lounge' | 'giftTable' | 'entrance' | 'bathroom' | 'playArea' | 'bouncyCastle' | 'kitchen';
+type FloorItemKind = TableShape | 'lineHorizontal' | 'lineVertical' | 'block' | 'dancefloor' | 'dj' | 'band' | 'desserts' | 'mixology' | 'bar' | 'stage' | 'lounge' | 'giftTable' | 'entrance' | 'bathroom' | 'playArea' | 'bouncyCastle' | 'kitchen';
 interface FloorItem {
   id: string;
   kind: FloorItemKind;
@@ -121,6 +126,7 @@ interface FloorItem {
   scale?: number;
   rotation?: number;
   groupId?: string;
+  locked?: boolean;
 }
 interface FloorPlanSnapshot {
   items: FloorItem[];
@@ -138,6 +144,7 @@ const DEFAULT_FLOOR_SETTINGS: FloorSettings = { orientation: 'horizontal', width
 
 const FLOOR_ITEM_LABEL: Record<FloorItemKind, string> = {
   round: 'Mesa redonda', square: 'Mesa cuadrada', rectangle: 'Mesa rectangular', imperial: 'Mesa imperial',
+  lineHorizontal: 'Línea horizontal', lineVertical: 'Línea vertical', block: 'Bloque cuadrado',
   dancefloor: 'Pista de baile', dj: 'Cabina DJ', band: 'Grupo musical', desserts: 'Barra de postres',
   mixology: 'Barra de mixología', bar: 'Barra de bebidas', stage: 'Escenario', lounge: 'Sala lounge', giftTable: 'Mesa de regalos', entrance: 'Entrada',
   bathroom: 'Baño', playArea: 'Área de juegos', bouncyCastle: 'Brincolín', kitchen: 'Cocina',
@@ -146,12 +153,15 @@ const TABLE_SHAPE_PLURAL: Record<TableShape, string> = {
   round: 'mesas redondas', square: 'mesas cuadradas', rectangle: 'mesas rectangulares', imperial: 'mesas imperiales',
 };
 const TABLE_SEAT_PRESETS = [4, 6, 8, 10, 12, 14, 16];
-const FLOOR_ITEM_CATALOG: FloorItemKind[] = ['round', 'square', 'rectangle', 'imperial', 'dancefloor', 'dj', 'band', 'desserts', 'mixology', 'bar', 'stage', 'lounge', 'giftTable', 'entrance', 'bathroom', 'playArea', 'bouncyCastle', 'kitchen'];
+const FLOOR_ITEM_CATALOG: FloorItemKind[] = ['round', 'square', 'rectangle', 'imperial', 'lineHorizontal', 'lineVertical', 'block', 'dancefloor', 'dj', 'band', 'desserts', 'mixology', 'bar', 'stage', 'lounge', 'giftTable', 'entrance', 'bathroom', 'playArea', 'bouncyCastle', 'kitchen'];
 const FLOOR_ITEM_ICON: Record<FloorItemKind, LucideIcon> = {
   round: Circle,
   square: Square,
   rectangle: RectangleHorizontal,
   imperial: Table2,
+  lineHorizontal: Minus,
+  lineVertical: Minus,
+  block: Square,
   dancefloor: Disc3,
   dj: Disc3,
   band: Music2,
@@ -589,12 +599,15 @@ function AllTablesGrid({
   const [addingTables, setAddingTables] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
+  const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number } | null>(null);
   const [undoCount, setUndoCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
   const floorSettingsRef = useRef<FloorSettings>(DEFAULT_FLOOR_SETTINGS);
   const dragRef = useRef<{ itemIds: string[]; originX: number; originY: number; positions: Record<string, { x: number; y: number }> } | null>(null);
   const itemResizeRef = useRef<{ id: string; kind: FloorItemKind; startX: number; startY: number; scale: number } | null>(null);
   const defaultScaleRef = useRef<Partial<Record<FloorItemKind, number>>>({});
   const undoHistoryRef = useRef<FloorPlanSnapshot[]>([]);
+  const redoHistoryRef = useRef<FloorPlanSnapshot[]>([]);
   const resizeRef = useRef<{ startX: number; startY: number; width: number; height: number } | null>(null);
   const addingTablesRef = useRef(false);
   const marqueeRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -615,16 +628,30 @@ function AllTablesGrid({
       { items, settings: floorSettingsRef.current, defaultScales: { ...defaultScaleRef.current } },
     ];
     undoHistoryRef.current = nextHistory;
+    redoHistoryRef.current = [];
     setUndoCount(nextHistory.length);
+    setRedoCount(0);
   }, [items]);
 
   const undoLastLayoutChange = useCallback(() => {
     const previous = undoHistoryRef.current.pop();
     if (!previous) return;
+    redoHistoryRef.current = [...redoHistoryRef.current.slice(-29), { items, settings: floorSettingsRef.current, defaultScales: { ...defaultScaleRef.current } }];
     setUndoCount(undoHistoryRef.current.length);
+    setRedoCount(redoHistoryRef.current.length);
     defaultScaleRef.current = previous.defaultScales;
     persist(previous.items, previous.settings);
-  }, [persist]);
+  }, [items, persist]);
+
+  const redoLastLayoutChange = useCallback(() => {
+    const next = redoHistoryRef.current.pop();
+    if (!next) return;
+    undoHistoryRef.current = [...undoHistoryRef.current.slice(-29), { items, settings: floorSettingsRef.current, defaultScales: { ...defaultScaleRef.current } }];
+    setUndoCount(undoHistoryRef.current.length);
+    setRedoCount(redoHistoryRef.current.length);
+    defaultScaleRef.current = next.defaultScales;
+    persist(next.items, next.settings);
+  }, [items, persist]);
 
   useEffect(() => {
     if (addingTablesRef.current) return;
@@ -686,6 +713,7 @@ function AllTablesGrid({
 
   const startItemResize = (event: React.PointerEvent<HTMLButtonElement>, item: FloorItem) => {
     event.preventDefault();
+    if (item.locked) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     rememberLayout();
     itemResizeRef.current = { id: item.id, kind: item.kind, startX: event.clientX, startY: event.clientY, scale: item.scale ?? 1 };
@@ -707,6 +735,7 @@ function AllTablesGrid({
   };
 
   const rotateItem = (item: FloorItem) => {
+    if (item.locked) return;
     rememberLayout();
     const rotation = ((item.rotation ?? 0) + 90) % 360;
     persist(items.map((current) => current.id === item.id ? { ...current, rotation } : current));
@@ -714,13 +743,14 @@ function AllTablesGrid({
 
   const moveItem = useCallback((event: React.PointerEvent<HTMLButtonElement>, itemId: string) => {
     event.preventDefault();
+    if (items.find((item) => item.id === itemId)?.locked) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     const bounds = canvasRef.current?.getBoundingClientRect();
     if (!bounds) return;
     const baseSelection = selectedItemIds.has(itemId) ? selectedItemIds : new Set([itemId]);
     if (!selectedItemIds.has(itemId)) setSelectedItemIds(baseSelection);
     const groupIds = new Set(items.filter((item) => baseSelection.has(item.id) && item.groupId).map((item) => item.groupId));
-    const itemIds = items.filter((item) => baseSelection.has(item.id) || (item.groupId != null && groupIds.has(item.groupId))).map((item) => item.id);
+    const itemIds = items.filter((item) => !item.locked && (baseSelection.has(item.id) || (item.groupId != null && groupIds.has(item.groupId)))).map((item) => item.id);
     rememberLayout();
     dragRef.current = {
       itemIds,
@@ -734,8 +764,20 @@ function AllTablesGrid({
     const dragging = dragRef.current;
     const bounds = canvasRef.current?.getBoundingClientRect();
     if (!dragging || !bounds) return;
-    const deltaX = ((event.clientX - bounds.left) / bounds.width) * 100 - dragging.originX;
-    const deltaY = ((event.clientY - bounds.top) / bounds.height) * 100 - dragging.originY;
+    let deltaX = ((event.clientX - bounds.left) / bounds.width) * 100 - dragging.originX;
+    let deltaY = ((event.clientY - bounds.top) / bounds.height) * 100 - dragging.originY;
+    const anchorId = dragging.itemIds[0];
+    const anchor = dragging.positions[anchorId];
+    const stationary = items.filter((item) => !dragging.itemIds.includes(item.id));
+    const snapTo = (axis: 'x' | 'y', value: number) => stationary.reduce<{ value: number; distance: number } | null>((closest, item) => {
+      const distance = Math.abs(item[axis] - value);
+      return distance <= 1.35 && (!closest || distance < closest.distance) ? { value: item[axis], distance } : closest;
+    }, null);
+    const snappedX = anchor ? snapTo('x', anchor.x + deltaX) : null;
+    const snappedY = anchor ? snapTo('y', anchor.y + deltaY) : null;
+    if (anchor && snappedX) deltaX += snappedX.value - (anchor.x + deltaX);
+    if (anchor && snappedY) deltaY += snappedY.value - (anchor.y + deltaY);
+    setAlignmentGuides(snappedX || snappedY ? { x: snappedX?.value, y: snappedY?.value } : null);
     persist(items.map((item) => {
       const original = dragging.positions[item.id];
       return original ? { ...item, x: Math.min(100, Math.max(0, original.x + deltaX)), y: Math.min(100, Math.max(0, original.y + deltaY)) } : item;
@@ -816,7 +858,7 @@ function AllTablesGrid({
     rememberLayout();
     const scales = { ...defaultScaleRef.current };
     const next = items.map((item) => {
-      if (!selectedItemIds.has(item.id)) return item;
+      if (!selectedItemIds.has(item.id) || item.locked) return item;
       const scale = Math.min(2.5, Math.max(.45, Math.round(((item.scale ?? 1) * factor) * 100) / 100));
       scales[item.kind] = scale;
       return { ...item, scale };
@@ -825,7 +867,55 @@ function AllTablesGrid({
     persist(next);
   };
 
+  const resizeSelectedGroup = (factor: number) => {
+    const groupIds = new Set(items.filter((item) => selectedItemIds.has(item.id) && item.groupId).map((item) => item.groupId));
+    const targets = items.filter((item) => selectedItemIds.has(item.id) || (item.groupId && groupIds.has(item.groupId)));
+    if (targets.length < 2) return;
+    rememberLayout();
+    const center = targets.reduce((sum, item) => ({ x: sum.x + item.x, y: sum.y + item.y }), { x: 0, y: 0 });
+    center.x /= targets.length;
+    center.y /= targets.length;
+    const targetIds = new Set(targets.map((item) => item.id));
+    persist(items.map((item) => {
+      if (!targetIds.has(item.id) || item.locked) return item;
+      const scale = Math.min(2.5, Math.max(.45, Math.round((item.scale ?? 1) * factor * 100) / 100));
+      return { ...item, scale, x: Math.min(100, Math.max(0, center.x + (item.x - center.x) * factor)), y: Math.min(100, Math.max(0, center.y + (item.y - center.y) * factor)) };
+    }));
+  };
+
+  const toggleSelectedLock = () => {
+    if (!selectedItemIds.size) return;
+    const lock = items.some((item) => selectedItemIds.has(item.id) && !item.locked);
+    rememberLayout();
+    persist(items.map((item) => selectedItemIds.has(item.id) ? { ...item, locked: lock } : item));
+  };
+
+  const reorderSelection = (direction: 'front' | 'back') => {
+    if (!selectedItemIds.size) return;
+    rememberLayout();
+    const selected = items.filter((item) => selectedItemIds.has(item.id));
+    const remaining = items.filter((item) => !selectedItemIds.has(item.id));
+    persist(direction === 'front' ? [...remaining, ...selected] : [...selected, ...remaining]);
+  };
+
+  const nudgeSelection = (x: number, y: number) => {
+    if (!selectedItemIds.size) return;
+    rememberLayout();
+    persist(items.map((item) => !selectedItemIds.has(item.id) || item.locked ? item : { ...item, x: Math.min(100, Math.max(0, item.x + x)), y: Math.min(100, Math.max(0, item.y + y)) }));
+  };
+
+  const deleteSelectedObjects = () => {
+    const removable = items.filter((item) => selectedItemIds.has(item.id) && item.tableId == null && !item.locked);
+    if (!removable.length) return;
+    rememberLayout();
+    const ids = new Set(removable.map((item) => item.id));
+    persist(items.filter((item) => !ids.has(item.id)));
+    setSelectedItemIds(new Set());
+  };
+
   const selectedGroupCount = new Set(items.filter((item) => selectedItemIds.has(item.id) && item.groupId).map((item) => item.groupId)).size;
+  const selectedLockedCount = items.filter((item) => selectedItemIds.has(item.id) && item.locked).length;
+  const selectedRemovableObjectCount = items.filter((item) => selectedItemIds.has(item.id) && item.tableId == null && !item.locked).length;
 
   const addElement = async (kind: FloorItemKind, position = { x: 50, y: 54 }, appearance?: Pick<FloorItem, 'scale' | 'rotation'>) => {
     if (isTableShape(kind)) {
@@ -928,15 +1018,28 @@ function AllTablesGrid({
   useEffect(() => {
     if (!editable) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== 'z') return;
       const target = event.target as HTMLElement | null;
       if (target?.matches('input, textarea, [contenteditable="true"]')) return;
-      event.preventDefault();
-      undoLastLayoutChange();
+      const modifier = event.ctrlKey || event.metaKey;
+      if (modifier && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redoLastLayoutChange(); else undoLastLayoutChange();
+        return;
+      }
+      if (!modifier && (event.key === 'Delete' || event.key === 'Backspace')) {
+        event.preventDefault();
+        deleteSelectedObjects();
+        return;
+      }
+      if (!modifier) {
+        const distance = event.shiftKey ? 5 : 1;
+        const nudge = event.key === 'ArrowLeft' ? [-distance, 0] : event.key === 'ArrowRight' ? [distance, 0] : event.key === 'ArrowUp' ? [0, -distance] : event.key === 'ArrowDown' ? [0, distance] : null;
+        if (nudge) { event.preventDefault(); nudgeSelection(nudge[0], nudge[1]); }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [editable, undoLastLayoutChange]);
+  }, [deleteSelectedObjects, editable, nudgeSelection, redoLastLayoutChange, undoLastLayoutChange]);
 
   useEffect(() => {
     if (!canvasMenu) return;
@@ -972,7 +1075,7 @@ function AllTablesGrid({
         </div>
         <div className="seat-floorplan-guidance">
           <p>{variant === 'reference' ? 'Este es el mismo acomodo creado en el primer paso. Selecciona una mesa para ver quién está sentado.' : 'Agrega mesas primero; después usa el plano para ajustar la distribución. También puedes hacer clic derecho en un espacio vacío.'}</p>
-          {editable && <div className="seat-floorplan-save-status" aria-live="polite"><span>Guardado en este dispositivo</span><button type="button" disabled={!undoCount} onClick={undoLastLayoutChange}>Deshacer</button></div>}
+          {editable && <div className="seat-floorplan-save-status" aria-live="polite"><span>Guardado en este dispositivo</span><button type="button" disabled={!undoCount} onClick={undoLastLayoutChange}>Deshacer</button><button type="button" disabled={!redoCount} onClick={redoLastLayoutChange}>Rehacer</button></div>}
         </div>
       </header>
       <div className="seat-floorplan-editor">
@@ -1029,7 +1132,7 @@ function AllTablesGrid({
             <button type="button" className="seat-floorplan-reset" onClick={onRequestClearSeating}>Vaciar acomodo</button>
           </details>
         </aside>}
-        <div ref={canvasRef} className={`seat-floorplan-room seat-floorplan-dynamic-room is-${floorSettings.orientation}`} style={{ aspectRatio: `${floorSettings.width} / ${floorSettings.height}` }} onContextMenu={openCanvasMenu} onPointerDown={editable ? startMarqueeSelection : undefined} onPointerMove={editable ? (event) => { resizeRoom(event); resizeItem(event); onCanvasMove(event); resizeMarqueeSelection(event); } : undefined} onPointerUp={(event) => { finishMarqueeSelection(event); dragRef.current = null; stopRoomResize(); stopItemResize(); }} onPointerCancel={() => { marqueeRef.current = null; setSelectionBox(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }}>
+        <div ref={canvasRef} className={`seat-floorplan-room seat-floorplan-dynamic-room is-${floorSettings.orientation}`} style={{ aspectRatio: `${floorSettings.width} / ${floorSettings.height}` }} onContextMenu={openCanvasMenu} onPointerDown={editable ? startMarqueeSelection : undefined} onPointerMove={editable ? (event) => { resizeRoom(event); resizeItem(event); onCanvasMove(event); resizeMarqueeSelection(event); } : undefined} onPointerUp={(event) => { finishMarqueeSelection(event); setAlignmentGuides(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }} onPointerCancel={() => { marqueeRef.current = null; setSelectionBox(null); setAlignmentGuides(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }}>
           {!hydrated && <span className="seat-floorplan-loading">Preparando plano…</span>}
           {editable && <button
             type="button"
@@ -1068,26 +1171,34 @@ function AllTablesGrid({
             </div>
           )}
           {selectionBox && <span className="seat-floorplan-selection-box" aria-hidden style={{ left: `${Math.min(selectionBox.startX, selectionBox.x)}%`, top: `${Math.min(selectionBox.startY, selectionBox.y)}%`, width: `${Math.abs(selectionBox.x - selectionBox.startX)}%`, height: `${Math.abs(selectionBox.y - selectionBox.startY)}%` }} />}
+          {alignmentGuides?.x != null && <span className="seat-floorplan-align-guide is-vertical" aria-hidden style={{ left: `${alignmentGuides.x}%` }} />}
+          {alignmentGuides?.y != null && <span className="seat-floorplan-align-guide is-horizontal" aria-hidden style={{ top: `${alignmentGuides.y}%` }} />}
           {items.map((item) => {
             const table = item.tableId != null ? tables.find((current) => current.id === item.tableId) : undefined;
             return (
-              <div key={item.id} className={`seat-floor-item seat-floor-item-${item.kind}${selectedItemIds.has(item.id) ? ' is-selected' : ''}${item.groupId ? ' is-grouped' : ''}`} onPointerDown={(event) => selectItem(event, item.id)} style={{ left: `${item.x}%`, top: `${item.y}%`, '--floor-item-scale': item.scale ?? 1, '--floor-item-rotation': `${item.rotation ?? 0}deg`, '--floor-item-offset-x': item.x === 0 ? '0%' : item.x === 100 ? '-100%' : '-50%', '--floor-item-offset-y': item.y === 0 ? '0%' : item.y === 100 ? '-100%' : '-50%' } as React.CSSProperties}>
-                {editable && <button type="button" className="seat-floor-item-drag" aria-label={`Mover ${item.label}`} onPointerDown={(event) => moveItem(event, item.id)}><GripVertical size={14} aria-hidden /></button>}
+              <div key={item.id} className={`seat-floor-item seat-floor-item-${item.kind}${selectedItemIds.has(item.id) ? ' is-selected' : ''}${item.groupId ? ' is-grouped' : ''}${item.locked ? ' is-locked' : ''}`} onPointerDown={(event) => selectItem(event, item.id)} style={{ left: `${item.x}%`, top: `${item.y}%`, '--floor-item-scale': item.scale ?? 1, '--floor-item-rotation': `${item.rotation ?? 0}deg`, '--floor-item-offset-x': item.x === 0 ? '0%' : item.x === 100 ? '-100%' : '-50%', '--floor-item-offset-y': item.y === 0 ? '0%' : item.y === 100 ? '-100%' : '-50%' } as React.CSSProperties}>
+                {editable && !item.locked && <button type="button" className="seat-floor-item-drag" aria-label={`Mover ${item.label}`} onPointerDown={(event) => moveItem(event, item.id)}><GripVertical size={14} aria-hidden /></button>}
                 {editable && <button type="button" className="seat-floor-item-copy" aria-label={`Copiar ${item.label}`} title="Copiar elemento" onClick={() => copyElement(item)}><Copy size={13} aria-hidden /></button>}
-                {editable && <button type="button" className="seat-floor-item-rotate" aria-label={`Girar ${item.label} 90 grados`} title="Girar 90 grados" onClick={() => rotateItem(item)}><RotateCw size={14} aria-hidden /></button>}
-                {editable && <button type="button" className="seat-floor-item-resize" aria-label={`Cambiar tamaño de ${item.label}`} title="Arrastra para cambiar tamaño; se usará en nuevos elementos del mismo tipo" onPointerDown={(event) => startItemResize(event, item)}>↘</button>}
+                {editable && !item.locked && <button type="button" className="seat-floor-item-rotate" aria-label={`Girar ${item.label} 90 grados`} title="Girar 90 grados" onClick={() => rotateItem(item)}><RotateCw size={14} aria-hidden /></button>}
+                {editable && !item.locked && <button type="button" className="seat-floor-item-resize" aria-label={`Cambiar tamaño de ${item.label}`} title="Arrastra para cambiar tamaño; se usará en nuevos elementos del mismo tipo" onPointerDown={(event) => startItemResize(event, item)}>↘</button>}
+                {editable && item.locked && <span className="seat-floor-item-lock" title="Elemento bloqueado"><Lock size={13} aria-hidden /></span>}
                 {table ? (
-                  <TableCard table={table} families={familiesByTable.get(table.id) || []} shape={item.kind as TableShape} onDelete={onDeleteTable} onRename={onRenameTable} onSelectTable={onSelectTable} onSelectFamily={onSelectFamily} editable={editable} />
+                  <TableCard table={table} families={familiesByTable.get(table.id) || []} shape={item.kind as TableShape} onDelete={onDeleteTable} onRename={onRenameTable} onSelectTable={onSelectTable} onSelectFamily={onSelectFamily} editable={editable && !item.locked} />
+                ) : item.kind === 'lineHorizontal' || item.kind === 'lineVertical' || item.kind === 'block' ? (
+                  <div className={`seat-floor-geometry is-${item.kind}`} aria-label={item.label}>
+                    {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
+                    <span>{item.kind === 'block' ? 'Bloque' : 'Línea'}</span>
+                  </div>
                 ) : item.kind === 'entrance' ? (
                   <div className="seat-floor-door" aria-label="Entrada">
-                    {editable && <button type="button" className="seat-floor-item-remove" aria-label="Eliminar entrada" onClick={() => removeElement(item)}>×</button>}
+                    {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label="Eliminar entrada" onClick={() => removeElement(item)}>×</button>}
                     <span className="seat-floor-door-arc" aria-hidden />
                     <span className="seat-floor-door-leaf" aria-hidden />
                     <strong>Entrada</strong>
                   </div>
                 ) : (
                   <div className="seat-floor-object">
-                    {editable && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
+                    {editable && !item.locked && <button type="button" className="seat-floor-item-remove" aria-label={`Eliminar ${item.label}`} onClick={() => removeElement(item)}>×</button>}
                     {React.createElement(FLOOR_ITEM_ICON[item.kind], { size: 23, strokeWidth: 1.8, 'aria-hidden': true })}
                     <strong>{item.label}</strong>
                     <small>{item.kind === 'dj' ? 'Sonido y cabina' : item.kind === 'band' ? 'Música en vivo' : item.kind === 'stage' ? 'Ceremonia y discursos' : item.kind === 'lounge' ? 'Zona de descanso' : item.kind === 'giftTable' ? 'Sobres y obsequios' : item.kind === 'kitchen' ? 'Servicio de alimentos' : item.kind === 'playArea' || item.kind === 'bouncyCastle' ? 'Zona infantil' : 'Elemento del salón'}</small>
@@ -1098,11 +1209,17 @@ function AllTablesGrid({
           })}
         </div>
         {editable && selectedItemIds.size > 0 && <div className="seat-floorplan-selection-toolbar" role="toolbar" aria-label="Acciones de la selección">
-          <span>{selectedItemIds.size} {selectedItemIds.size === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}</span>
+          <span>{selectedItemIds.size} {selectedItemIds.size === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}{selectedLockedCount ? ` · ${selectedLockedCount} bloqueado${selectedLockedCount === 1 ? '' : 's'}` : ''}</span>
           <button type="button" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}><Group size={15} aria-hidden /> Agrupar</button>
           <button type="button" disabled={!selectedGroupCount} onClick={ungroupSelectedItems}><Ungroup size={15} aria-hidden /> Desagrupar</button>
+          <button type="button" onClick={toggleSelectedLock}>{selectedLockedCount === selectedItemIds.size ? <Unlock size={15} aria-hidden /> : <Lock size={15} aria-hidden />}{selectedLockedCount === selectedItemIds.size ? ' Desbloquear' : ' Bloquear'}</button>
+          <button type="button" onClick={() => reorderSelection('front')}><ArrowUp size={15} aria-hidden /> Al frente</button>
+          <button type="button" onClick={() => reorderSelection('back')}><ArrowDown size={15} aria-hidden /> Al fondo</button>
           <button type="button" onClick={() => resizeSelectedItems(1.1)}><ZoomIn size={15} aria-hidden /> Ampliar</button>
           <button type="button" onClick={() => resizeSelectedItems(1 / 1.1)}><ZoomOut size={15} aria-hidden /> Reducir</button>
+          <button type="button" disabled={selectedItemIds.size < 2} onClick={() => resizeSelectedGroup(1.15)}><ZoomIn size={15} aria-hidden /> Ampliar grupo</button>
+          <button type="button" disabled={selectedItemIds.size < 2} onClick={() => resizeSelectedGroup(1 / 1.15)}><ZoomOut size={15} aria-hidden /> Reducir grupo</button>
+          <button type="button" disabled={!selectedRemovableObjectCount} onClick={deleteSelectedObjects}><Trash2 size={15} aria-hidden /> Eliminar</button>
         </div>}
       </div>
       {tableBatchRequest && (
@@ -1533,18 +1650,40 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
   const exportHostessPdf = () => {
     const tableById = new Map(tables.map((table) => [table.id, table]));
-    const rows = families
-      .flatMap((family) => family.guests.filter((guest) => guest.confirmed !== false).map((guest) => ({ guest, family, table: guest.tableId ? tableById.get(guest.tableId) : undefined })))
+    const confirmedGuests = families
+      .flatMap((family) => family.guests.filter((guest) => guest.confirmed === true).map((guest) => ({ guest, family, table: guest.tableId ? tableById.get(guest.tableId) : undefined })));
+    const alphabeticalRows = confirmedGuests
       .sort((a, b) => a.guest.name.localeCompare(b.guest.name, 'es-MX', { sensitivity: 'base' }))
       .map(({ guest, family, table }) => `<tr class="${table ? '' : 'unassigned'}"><td>${escapeHtml(guest.name)}${guest.isChild ? ' <span>Niño</span>' : ''}</td><td>${escapeHtml(family.familyName)}</td><td>${table ? `Mesa ${table.position} · ${escapeHtml(table.name)}` : 'SIN MESA'}</td></tr>`)
       .join('');
+    const familyRows = families
+      .map((family) => ({ family, guests: family.guests.filter((guest) => guest.confirmed === true) }))
+      .filter(({ guests }) => guests.length > 0)
+      .sort((a, b) => a.family.familyName.localeCompare(b.family.familyName, 'es-MX', { sensitivity: 'base' }))
+      .map(({ family, guests }) => `<section class="family"><h3>${escapeHtml(family.familyName)} <small>${guests.length} confirmado${guests.length === 1 ? '' : 's'}</small></h3><table><thead><tr><th>Asistente</th><th>Mesa asignada</th></tr></thead><tbody>${guests.map((guest) => { const table = guest.tableId ? tableById.get(guest.tableId) : undefined; return `<tr class="${table ? '' : 'unassigned'}"><td>${escapeHtml(guest.name)}${guest.isChild ? ' <span>Niño</span>' : ''}</td><td>${table ? `Mesa ${table.position} · ${escapeHtml(table.name)}` : 'SIN MESA'}</td></tr>`; }).join('')}</tbody></table></section>`)
+      .join('');
+    let layoutItems: FloorItem[] = [];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(`eventgo:floorplan:${eventId}`) || '[]') as FloorItem[] | { items?: FloorItem[] };
+      layoutItems = Array.isArray(saved) ? saved : saved.items ?? [];
+    } catch { layoutItems = []; }
+    const shape = (item: FloorItem) => {
+      const x = item.x * 10, y = item.y * 6, label = escapeHtml(item.tableId ? tableById.get(item.tableId)?.name || item.label : item.label);
+      if (item.kind === 'round') return `<circle cx="${x}" cy="${y}" r="34" class="table"/><text x="${x}" y="${y}" class="label">${label}</text>`;
+      if (item.kind === 'lineHorizontal') return `<line x1="${x - 70}" y1="${y}" x2="${x + 70}" y2="${y}" class="line"/><text x="${x}" y="${y - 12}" class="label">${label}</text>`;
+      if (item.kind === 'lineVertical') return `<line x1="${x}" y1="${y - 60}" x2="${x}" y2="${y + 60}" class="line"/><text x="${x + 12}" y="${y}" class="label">${label}</text>`;
+      const width = item.kind === 'dancefloor' ? 150 : item.kind === 'block' ? 80 : 118;
+      const height = item.kind === 'dancefloor' ? 90 : item.kind === 'block' ? 80 : 54;
+      return `<rect x="${x - width / 2}" y="${y - height / 2}" width="${width}" height="${height}" rx="8" class="${item.tableId ? 'table' : 'object'}"/><text x="${x}" y="${y}" class="label">${label}</text>`;
+    };
+    const layoutSvg = layoutItems.length ? `<svg viewBox="0 0 1000 600" role="img" aria-label="Distribución del salón"><rect width="1000" height="600" class="room"/>${layoutItems.map(shape).join('')}</svg>` : '<p class="empty">No hay elementos guardados en el plano del salón.</p>';
     const printable = window.open('', '_blank');
     if (!printable) { setError('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
     printable.opener = null;
     printable.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Acomodo de salón · ${escapeHtml(eventName || 'Evento')}</title><style>
-      @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;background:#fff}.header{border-bottom:3px solid #33567D;padding-bottom:12px;margin-bottom:16px}.eyebrow{font-size:10px;letter-spacing:1.5px;font-weight:700;color:#B5546F}.header h1{font-family:Georgia,serif;font-size:27px;margin:4px 0}.meta{font-size:12px;color:#526074}.summary{display:flex;gap:10px;margin:14px 0 18px}.metric{border:1px solid #d9e0ea;border-radius:8px;padding:9px 12px;min-width:110px}.metric b{display:block;font-size:18px}.metric span{font-size:10px;text-transform:uppercase;color:#687386}table{width:100%;border-collapse:collapse}th{background:#33567D;color:#fff;text-align:left;padding:9px 10px;font-size:10px;letter-spacing:.7px;text-transform:uppercase}td{border-bottom:1px solid #e2e8f0;padding:9px 10px;font-size:12px}td:first-child{font-weight:700}td span{margin-left:5px;padding:2px 5px;background:#e7f3ff;color:#33567D;border-radius:8px;font-size:9px;font-weight:700}.unassigned td{background:#fff5f5;color:#9f1d1d}.footer{margin-top:18px;border-top:1px solid #d9e0ea;padding-top:8px;font-size:10px;color:#687386}</style></head><body>
+      @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;background:#fff}.header{border-bottom:3px solid #33567D;padding-bottom:12px;margin-bottom:16px}.eyebrow{font-size:10px;letter-spacing:1.5px;font-weight:700;color:#B5546F}.header h1{font-family:Georgia,serif;font-size:27px;margin:4px 0}.meta{font-size:12px;color:#526074}.summary{display:flex;gap:10px;margin:14px 0 18px}.metric{border:1px solid #d9e0ea;border-radius:8px;padding:9px 12px;min-width:110px}.metric b{display:block;font-size:18px}.metric span{font-size:10px;text-transform:uppercase;color:#687386}.section-title{margin:20px 0 9px;color:#33567D;font-size:14px;letter-spacing:.08em;text-transform:uppercase}.layout{padding:10px;border:1px solid #d9e2eb;border-radius:10px;background:#f8fbfd}.layout svg{display:block;width:100%;max-height:430px}.room{fill:#fff;stroke:#b8cce0;stroke-width:3}.table{fill:#edf4fb;stroke:#33567D;stroke-width:2}.object{fill:#fff8fa;stroke:#b5546F;stroke-width:2}.line{stroke:#33567D;stroke-width:4}.label{fill:#294a6d;font:700 14px Arial,sans-serif;text-anchor:middle;dominant-baseline:middle}.empty{padding:28px;text-align:center;color:#64748b}.page-break{break-before:page}table{width:100%;border-collapse:collapse}th{background:#33567D;color:#fff;text-align:left;padding:8px 9px;font-size:10px;letter-spacing:.7px;text-transform:uppercase}td{border-bottom:1px solid #e2e8f0;padding:7px 9px;font-size:11px}td:first-child{font-weight:700}td span{margin-left:5px;padding:2px 5px;background:#e7f3ff;color:#33567D;border-radius:8px;font-size:9px;font-weight:700}.family{break-inside:avoid;margin:0 0 14px}.family h3{display:flex;justify-content:space-between;margin:0;padding:8px 10px;background:#edf4fb;color:#294a6d;font-size:13px}.family h3 small{font-weight:500}.unassigned td{background:#fff5f5;color:#9f1d1d}.footer{margin-top:18px;border-top:1px solid #d9e0ea;padding-top:8px;font-size:10px;color:#687386}</style></head><body>
       <header class="header"><span class="eyebrow">GUÍA OPERATIVA · HOSTESS DE SALÓN</span><h1>${escapeHtml(eventName || 'Acomodo del salón')}</h1><div class="meta">Generado el ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())}</div></header>
-      <div class="summary"><div class="metric"><b>${tables.length}</b><span>Mesas</span></div><div class="metric"><b>${seatedGuests}/${totalGuests}</b><span>Personas sentadas</span></div><div class="metric"><b>${pct}%</b><span>Ocupación</span></div></div><main><table><thead><tr><th>Invitado</th><th>Familia</th><th>Mesa asignada</th></tr></thead><tbody>${rows}</tbody></table></main><footer class="footer">Listado alfabético para recepción. Las filas en rojo requieren asignación antes de recibir al invitado.</footer>
+      <div class="summary"><div class="metric"><b>${tables.length}</b><span>Mesas</span></div><div class="metric"><b>${seatedGuests}/${totalGuests}</b><span>Personas sentadas</span></div><div class="metric"><b>${confirmedGuests.length}</b><span>Confirmados</span></div><div class="metric"><b>${pct}%</b><span>Ocupación</span></div></div><main><h2 class="section-title">1. Distribución del salón</h2><div class="layout">${layoutSvg}</div><section class="page-break"><h2 class="section-title">2. Lista por familia · confirmados</h2>${familyRows || '<p class="empty">No hay asistentes confirmados.</p>'}</section><section class="page-break"><h2 class="section-title">3. Lista alfabética · asistentes confirmados</h2><table><thead><tr><th>Asistente</th><th>Familia</th><th>Mesa asignada</th></tr></thead><tbody>${alphabeticalRows}</tbody></table></section></main><footer class="footer">Guía operativa para recepción. Sólo incluye asistentes confirmados; las filas en rojo requieren mesa.</footer>
       <script>window.onload=()=>{window.print();};</script></body></html>`);
     printable.document.close();
   };
@@ -1630,7 +1769,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                     }}
                   >
                     <FileDown size={17} aria-hidden />
-                    <span><strong>PDF para hostess</strong><small>Lista alfabética con mesa asignada</small></span>
+                    <span><strong>PDF para hostess</strong><small>Plano y listas de confirmados</small></span>
                   </button>
                   <button
                     type="button"
@@ -1730,7 +1869,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
             <p className="mb-6 text-sm text-gray-500"><strong>{mobileGuestSelect.guest.name}</strong> · {mobileGuestSelect.family.familyName}</p>
             <div className="flex flex-col gap-3">
               <button type="button" onClick={() => { void assignGuest(mobileGuestSelect.guest.id, null).then(() => setMobileGuestSelect(null)).catch((error) => setError(error.message)); }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-4 text-left"><span className="font-medium text-gray-700">Sin asignar</span>{mobileGuestSelect.guest.tableId == null && <CheckCircle2 size={20} />}</button>
-              {tables.map((table) => { const occupied = (familiesByTable.get(table.id) || []).reduce((sum, family) => sum + headcount(family), 0); return <button key={table.id} type="button" onClick={() => { void assignGuest(mobileGuestSelect.guest.id, table.id).then(() => setMobileGuestSelect(null)).catch((error) => setError(error.message)); }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 p-4 text-left hover:bg-slate-50"><span><strong className="block text-gray-800">{table.name}</strong><small className="text-gray-500">{occupied}/{table.seats} ocupados</small></span>{mobileGuestSelect.guest.tableId === table.id && <CheckCircle2 size={20} />}</button>; })}
+              {tables.map((table) => { const occupied = (familiesByTable.get(table.id) || []).reduce((sum, family) => sum + headcount(family), 0); const isCurrent = mobileGuestSelect.guest.tableId === table.id; if (occupied >= table.seats && !isCurrent) return null; return <button key={table.id} type="button" onClick={() => { void assignGuest(mobileGuestSelect.guest.id, table.id).then(() => setMobileGuestSelect(null)).catch((error) => setError(error.message)); }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 p-4 text-left hover:bg-slate-50"><span><strong className="block text-gray-800">{table.name}</strong><small className="text-gray-500">{occupied}/{table.seats} ocupados</small></span>{isCurrent && <CheckCircle2 size={20} />}</button>; })}
             </div>
           </div>
         </div>
@@ -1756,6 +1895,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
               {tables.map(t => {
                 const currentOcc = (familiesByTable.get(t.id) || []).reduce((sum, f) => sum + headcount(f), 0);
                 const isCurrent = mobileFamilySelect.tableId === t.id;
+                if (currentOcc >= t.seats && !isCurrent) return null;
                 return (
                   <button 
                     key={t.id}
@@ -1840,6 +1980,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" aria-hidden />
                             {g.name}
                             {g.isChild && <span className="bg-blue-50 text-blue-600 text-[0.6rem] uppercase px-1.5 py-0.5 rounded-full font-bold">👶 Niño</span>}
+                            <button type="button" className="ml-auto rounded-md p-1 text-red-700 hover:bg-red-50" aria-label={`Eliminar a ${g.name}`} title="Eliminar invitado" onClick={() => setConfirmation({ kind: 'guest', guest: g })}><Trash2 size={15} /></button>
                           </span>
                         ))}
                       </div>

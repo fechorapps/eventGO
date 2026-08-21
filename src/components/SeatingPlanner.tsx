@@ -422,6 +422,17 @@ function TableCard({
         <TableViz seats={table.seats} guests={seatNames} color={color} isOver={isOver} shape={shape} />
       </div>
 
+      {occupied > 0 && (
+        <div className="seat-table-guest-preview" role="tooltip">
+          <strong>{occupied} {occupied === 1 ? 'invitado sentado' : 'invitados sentados'}</strong>
+          <ul>
+            {seatNames.map((name, index) => (
+              <li key={`${name}-${index}`}>{name}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {editing ? (
         <input
           ref={inputRef}
@@ -1506,13 +1517,6 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     setFamilies((prev) => prev.map((family) => family.id === data.rsvp.id ? { ...family, tableId: data.rsvp.tableId, side: data.rsvp.side, guests: family.guests.map((guest) => guest.id === guestId ? { ...guest, tableId: data.guest.tableId } : guest) } : family));
   }
 
-  async function deleteGuest(guestId: number) {
-    const res = await fetch(`/api/admin/rsvps?guestId=${guestId}`, { method: 'DELETE' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) throw new Error(data.error || 'No se pudo eliminar al invitado.');
-    setFamilies((prev) => prev.map((family) => ({ ...family, guests: family.guests.filter((guest) => guest.id !== guestId) })).filter((family) => family.guests.length > 0));
-  }
-
   async function addTable(side: TableSide = 'UNASSIGNED', seats = 12) {
     try {
       const res = await fetch('/api/admin/tables', {
@@ -1567,7 +1571,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
     }
     if (pending.kind === 'table') await deleteTable(pending.tableId);
     if (pending.kind === 'guest') {
-      try { await deleteGuest(pending.guest.id); } catch (error) { setError(error instanceof Error ? error.message : 'No se pudo eliminar al invitado.'); }
+      try { await assignGuest(pending.guest.id, null); } catch (error) { setError(error instanceof Error ? error.message : 'No se pudo quitar al invitado de la mesa.'); }
     }
   };
 
@@ -1980,7 +1984,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" aria-hidden />
                             {g.name}
                             {g.isChild && <span className="bg-blue-50 text-blue-600 text-[0.6rem] uppercase px-1.5 py-0.5 rounded-full font-bold">👶 Niño</span>}
-                            <button type="button" className="ml-auto rounded-md p-1 text-red-700 hover:bg-red-50" aria-label={`Eliminar a ${g.name}`} title="Eliminar invitado" onClick={() => setConfirmation({ kind: 'guest', guest: g })}><Trash2 size={15} /></button>
+                            <button type="button" className="ml-auto rounded-md p-1 text-red-700 hover:bg-red-50" aria-label={`Quitar a ${g.name} de esta mesa`} title="Quitar de la mesa" onClick={() => setConfirmation({ kind: 'guest', guest: g })}><X size={15} /></button>
                           </span>
                         ))}
                       </div>
@@ -2002,11 +2006,11 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
       {confirmation && (
         <ConfirmationDialog
-          title={confirmation.kind === 'clear' ? '¿Vaciar todo el acomodo?' : confirmation.kind === 'guest' ? '¿Eliminar este invitado?' : '¿Eliminar esta mesa?'}
+          title={confirmation.kind === 'clear' ? '¿Vaciar todo el acomodo?' : confirmation.kind === 'guest' ? '¿Quitar a este invitado de la mesa?' : '¿Eliminar esta mesa?'}
           description={confirmation.kind === 'clear'
             ? 'Se eliminarán todas las mesas, elementos del salón y asignaciones de familias. Los RSVP e invitados no se borrarán.'
-            : confirmation.kind === 'guest' ? `Se eliminará a ${confirmation.guest.name} de la lista de invitados. Esta acción no se puede deshacer.` : 'Las familias asignadas a esta mesa quedarán sin asignar.'}
-          confirmLabel={confirmation.kind === 'clear' ? 'Vaciar acomodo' : confirmation.kind === 'guest' ? 'Eliminar invitado' : 'Eliminar mesa'}
+            : confirmation.kind === 'guest' ? `${confirmation.guest.name} quedará sin mesa asignada y seguirá disponible para asignarlo a otra mesa.` : 'Las familias asignadas a esta mesa quedarán sin asignar.'}
+          confirmLabel={confirmation.kind === 'clear' ? 'Vaciar acomodo' : confirmation.kind === 'guest' ? 'Quitar de la mesa' : 'Eliminar mesa'}
           onCancel={() => setConfirmation(null)}
           onConfirm={confirmPendingAction}
         />

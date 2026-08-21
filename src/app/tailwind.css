@@ -4497,6 +4497,20 @@ body { overflow-x: clip; }
 .seat-table-viz { width: 116px; height: 116px; display: block; }
 .seat-dot { transition: stroke 0.15s; }
 .seat-dot:hover { stroke: rgba(0,0,0,0.4); stroke-width: 2.5px; }
+.seat-table-guest-preview {
+  position: absolute; z-index: 12; bottom: calc(100% + .6rem); left: 50%; width: max-content; max-width: 220px;
+  max-height: 220px; overflow-y: auto; padding: .7rem .8rem; border: 1px solid rgba(41, 74, 109, .18); border-radius: 10px;
+  background: #fff; box-shadow: 0 12px 24px rgba(15, 23, 42, .17); color: #294a6d; opacity: 0;
+  pointer-events: none; transform: translate(-50%, .35rem); transition: opacity .16s ease, transform .16s ease; visibility: hidden;
+}
+.seat-table-guest-preview::after {
+  position: absolute; bottom: -6px; left: 50%; width: 10px; height: 10px; border-right: 1px solid rgba(41, 74, 109, .18);
+  border-bottom: 1px solid rgba(41, 74, 109, .18); background: #fff; content: ''; transform: translateX(-50%) rotate(45deg);
+}
+.seat-table-guest-preview strong { display: block; padding-bottom: .4rem; border-bottom: 1px solid #e5edf4; font-size: .7rem; font-weight: 800; }
+.seat-table-guest-preview ul { display: grid; gap: .22rem; margin: .5rem 0 0; padding: 0; list-style: none; }
+.seat-table-guest-preview li { overflow: hidden; color: #465d75; font-size: .72rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.seat-table-card:hover .seat-table-guest-preview, .seat-table-card:focus-within .seat-table-guest-preview { opacity: 1; transform: translate(-50%, 0); visibility: visible; }
 .seat-table-delete {
   position: absolute; z-index: 3; top: 6px; right: 6px;
   background: none; border: none; cursor: pointer; color: var(--color-text-muted);
@@ -4696,6 +4710,7 @@ body { overflow-x: clip; }
 .seat-floorplan-align-guide.is-vertical { top: 0; bottom: 0; width: 1px; }
 .seat-floorplan-align-guide.is-horizontal { right: 0; left: 0; height: 1px; }
 .seat-floor-item:has(.seat-table-card) { width: 230px; }
+.seat-floor-item:has(.seat-table-card:hover), .seat-floor-item:has(.seat-table-card:focus-within) { z-index: 11; }
 .seat-floor-item .seat-table-card { box-shadow: 0 3px 10px rgba(15, 23, 42, .1); }
 .seat-floor-item-drag {
   position: absolute; z-index: 4; top: -9px; left: 50%; display: grid; place-items: center; width: 26px; height: 20px;

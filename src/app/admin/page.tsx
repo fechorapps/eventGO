@@ -62,8 +62,8 @@ export default function AdminPage() {
       </header>
 
       <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.8rem', color: 'var(--gold-dark)', margin: 0 }}>Tus Eventos</h2>
+        <div className="admin-events-heading">
+          <h2>Tus Eventos</h2>
           <Link href="/admin/eventos/nuevo" className="btn-gold">
             <Plus size={16} />
             Crear Nuevo Evento
@@ -84,7 +84,7 @@ export default function AdminPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+          <div className="admin-events-grid">
             {events.map((event) => {
               const dateFormatted = new Date(event.date).toLocaleDateString('es-MX', {
                 day: 'numeric',
@@ -95,7 +95,7 @@ export default function AdminPage() {
               });
 
               return (
-                <div key={event.id} className="section-card" style={{ padding: '2rem', textAlign: 'left', marginBottom: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div key={event.id} className="section-card admin-event-card">
                   <div style={{ marginBottom: '1.5rem', flexGrow: 1 }}>
                     <span className="guest-type-tag" style={{ fontSize: '0.65rem' }}>{event.title}</span>
                     <h3 style={{ fontSize: '1.6rem', color: 'var(--gold-dark)', marginTop: '0.2rem', marginBottom: '0.5rem' }}>
@@ -115,8 +115,8 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div style={{ borderTop: '1px solid rgba(212,175,55,0.1)', paddingTop: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="admin-event-actions">
+                    <div className="admin-event-primary-actions">
                       <Link href={`/admin/eventos/${event.id}`} className="btn-gold" style={{ flexGrow: 1, padding: '0.6rem', fontSize: '0.75rem' }}>
                         <Users size={14} />
                         Ver Invitados

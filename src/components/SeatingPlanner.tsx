@@ -581,6 +581,7 @@ function AllTablesGrid({
   const [addingTables, setAddingTables] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
+  const [undoCount, setUndoCount] = useState(0);
   const floorSettingsRef = useRef<FloorSettings>(DEFAULT_FLOOR_SETTINGS);
   const dragRef = useRef<{ itemIds: string[]; originX: number; originY: number; positions: Record<string, { x: number; y: number }> } | null>(null);
   const itemResizeRef = useRef<{ id: string; kind: FloorItemKind; startX: number; startY: number; scale: number } | null>(null);
@@ -601,15 +602,18 @@ function AllTablesGrid({
   }, [storageKey]);
 
   const rememberLayout = useCallback(() => {
-    undoHistoryRef.current = [
+    const nextHistory = [
       ...undoHistoryRef.current.slice(-29),
       { items, settings: floorSettingsRef.current, defaultScales: { ...defaultScaleRef.current } },
     ];
+    undoHistoryRef.current = nextHistory;
+    setUndoCount(nextHistory.length);
   }, [items]);
 
   const undoLastLayoutChange = useCallback(() => {
     const previous = undoHistoryRef.current.pop();
     if (!previous) return;
+    setUndoCount(undoHistoryRef.current.length);
     defaultScaleRef.current = previous.defaultScales;
     persist(previous.items, previous.settings);
   }, [persist]);
@@ -958,7 +962,10 @@ function AllTablesGrid({
           <span className="seat-floorplan-eyebrow">Vista del salón</span>
           <h2>Plano de recepción</h2>
         </div>
-        <p>Arrastra, gira y cambia el tamaño de cada objeto. Clic derecho en un espacio vacío para agregar otro.</p>
+        <div className="seat-floorplan-guidance">
+          <p>Agrega mesas primero; después usa el plano para ajustar la distribución. También puedes hacer clic derecho en un espacio vacío.</p>
+          {editable && <div className="seat-floorplan-save-status" aria-live="polite"><span>Guardado en este dispositivo</span><button type="button" disabled={!undoCount} onClick={undoLastLayoutChange}>Deshacer</button></div>}
+        </div>
       </header>
       <div className="seat-floorplan-editor">
         {editable && <aside className="seat-floorplan-palette" aria-label="Elementos del salón">
@@ -972,25 +979,6 @@ function AllTablesGrid({
             <label>Ancho <input type="number" min="4" max="100" value={floorSettings.width} onChange={(event) => updateFloorSettings({ width: Math.min(100, Math.max(4, Number(event.target.value) || 4)) })} /> <small>m</small></label>
             <label>Alto <input type="number" min="4" max="100" value={floorSettings.height} onChange={(event) => updateFloorSettings({ height: Math.min(100, Math.max(4, Number(event.target.value) || 4)) })} /> <small>m</small></label>
           </div>
-          <button type="button" className="seat-floorplan-paste" disabled={!copiedItem} title={copiedItem ? `Pegar copia de ${copiedItem.label}` : 'Primero copia un elemento del plano'} onClick={() => void pasteCopiedElement()}>
-            <Plus size={16} aria-hidden /> {copiedItem ? `Pegar ${copiedItem.label}` : 'Pegar elemento'}
-          </button>
-          {copiedItem && <p className="seat-floorplan-copy-status" aria-live="polite">Copia lista: {copiedItem.label}. También puedes hacer clic derecho y pegarla donde quieras.</p>}
-          <span>Selección</span>
-          <p className="seat-floorplan-copy-status">Arrastra en un espacio vacío para seleccionar varios con el mouse. Shift, Ctrl o ⌘ + clic también funciona.</p>
-          <button type="button" className="seat-floorplan-paste" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}>
-            <Group size={16} aria-hidden /> Agrupar {selectedItemIds.size > 1 ? `(${selectedItemIds.size})` : ''}
-          </button>
-          <button type="button" className="seat-floorplan-paste" disabled={!selectedGroupCount} onClick={ungroupSelectedItems}>
-            <Ungroup size={16} aria-hidden /> Desagrupar
-          </button>
-          <button type="button" className="seat-floorplan-paste" disabled={!selectedItemIds.size} onClick={() => resizeSelectedItems(1.1)}>
-            <ZoomIn size={16} aria-hidden /> Más grande
-          </button>
-          <button type="button" className="seat-floorplan-paste" disabled={!selectedItemIds.size} onClick={() => resizeSelectedItems(1 / 1.1)}>
-            <ZoomOut size={16} aria-hidden /> Más chico
-          </button>
-          <button type="button" className="seat-floorplan-reset" onClick={onRequestClearSeating}>Vaciar acomodo</button>
           <span>Mesas</span>
           <div className="seat-floorplan-palette-grid">
             {TABLE_SHAPES.map((kind) => (
@@ -1000,16 +988,46 @@ function AllTablesGrid({
               </button>
             ))}
           </div>
-          <span>Servicio y ambiente</span>
-          <div className="seat-floorplan-palette-grid">
-            {FLOOR_ITEM_CATALOG.slice(4).map((kind) => (
-              <button key={kind} type="button" onClick={() => addElement(kind)}>
-                {React.createElement(FLOOR_ITEM_ICON[kind], { size: 17, strokeWidth: 1.8, 'aria-hidden': true })}
-                <span>{FLOOR_ITEM_LABEL[kind]}</span>
-              </button>
-            ))}
-          </div>
+          <details className="seat-floorplan-tools">
+            <summary>Más herramientas del plano</summary>
+            <button type="button" className="seat-floorplan-paste" disabled={!copiedItem} title={copiedItem ? `Pegar copia de ${copiedItem.label}` : 'Primero copia un elemento del plano'} onClick={() => void pasteCopiedElement()}>
+              <Plus size={16} aria-hidden /> {copiedItem ? `Pegar ${copiedItem.label}` : 'Pegar elemento'}
+            </button>
+            {copiedItem && <p className="seat-floorplan-copy-status" aria-live="polite">Copia lista: {copiedItem.label}. También puedes hacer clic derecho y pegarla donde quieras.</p>}
+            <p className="seat-floorplan-copy-status">Selecciona objetos para agrupar o cambiar su tamaño. Arrastra en un espacio vacío o usa Shift, Ctrl o ⌘ + clic.</p>
+            <button type="button" className="seat-floorplan-paste" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}>
+              <Group size={16} aria-hidden /> Agrupar {selectedItemIds.size > 1 ? `(${selectedItemIds.size})` : ''}
+            </button>
+            <button type="button" className="seat-floorplan-paste" disabled={!selectedGroupCount} onClick={ungroupSelectedItems}>
+              <Ungroup size={16} aria-hidden /> Desagrupar
+            </button>
+            <button type="button" className="seat-floorplan-paste" disabled={!selectedItemIds.size} onClick={() => resizeSelectedItems(1.1)}>
+              <ZoomIn size={16} aria-hidden /> Más grande
+            </button>
+            <button type="button" className="seat-floorplan-paste" disabled={!selectedItemIds.size} onClick={() => resizeSelectedItems(1 / 1.1)}>
+              <ZoomOut size={16} aria-hidden /> Más chico
+            </button>
+            <details className="seat-floorplan-service-tools">
+              <summary>Servicio y ambiente</summary>
+              <div className="seat-floorplan-palette-grid">
+                {FLOOR_ITEM_CATALOG.slice(4).map((kind) => (
+                  <button key={kind} type="button" onClick={() => addElement(kind)}>
+                    {React.createElement(FLOOR_ITEM_ICON[kind], { size: 17, strokeWidth: 1.8, 'aria-hidden': true })}
+                    <span>{FLOOR_ITEM_LABEL[kind]}</span>
+                  </button>
+                ))}
+              </div>
+            </details>
+            <button type="button" className="seat-floorplan-reset" onClick={onRequestClearSeating}>Vaciar acomodo</button>
+          </details>
         </aside>}
+        {editable && selectedItemIds.size > 0 && <div className="seat-floorplan-selection-toolbar" role="toolbar" aria-label="Acciones de la selección">
+          <span>{selectedItemIds.size} {selectedItemIds.size === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}</span>
+          <button type="button" disabled={selectedItemIds.size < 2} onClick={groupSelectedItems}><Group size={15} aria-hidden /> Agrupar</button>
+          <button type="button" disabled={!selectedGroupCount} onClick={ungroupSelectedItems}><Ungroup size={15} aria-hidden /> Desagrupar</button>
+          <button type="button" onClick={() => resizeSelectedItems(1.1)}><ZoomIn size={15} aria-hidden /> Ampliar</button>
+          <button type="button" onClick={() => resizeSelectedItems(1 / 1.1)}><ZoomOut size={15} aria-hidden /> Reducir</button>
+        </div>}
         <div ref={canvasRef} className={`seat-floorplan-room seat-floorplan-dynamic-room is-${floorSettings.orientation}`} style={{ aspectRatio: `${floorSettings.width} / ${floorSettings.height}` }} onContextMenu={openCanvasMenu} onPointerDown={editable ? startMarqueeSelection : undefined} onPointerMove={editable ? (event) => { resizeRoom(event); resizeItem(event); onCanvasMove(event); resizeMarqueeSelection(event); } : undefined} onPointerUp={(event) => { finishMarqueeSelection(event); dragRef.current = null; stopRoomResize(); stopItemResize(); }} onPointerCancel={() => { marqueeRef.current = null; setSelectionBox(null); dragRef.current = null; stopRoomResize(); stopItemResize(); }}>
           {!hydrated && <span className="seat-floorplan-loading">Preparando plano…</span>}
           {editable && <button
@@ -1105,33 +1123,33 @@ function AllTablesGrid({
   );
 }
 
-type Step = 'LAYOUT' | 'ASSIGN' | 'REVIEW';
-const STEP_ORDER: Step[] = ['LAYOUT', 'ASSIGN', 'REVIEW'];
-const STEP_LABEL: Record<Step, string> = { LAYOUT: 'Diseñar salón', ASSIGN: 'Asignar invitados', REVIEW: 'Revisar y exportar' };
+type Step = 'MAMA' | 'PAPA' | 'REVIEW';
+const STEP_ORDER: Step[] = ['MAMA', 'PAPA', 'REVIEW'];
+const STEP_LABEL: Record<Step, string> = { MAMA: 'Mamá', PAPA: 'Papá', REVIEW: 'Revisión' };
 
 function Stepper({
   active,
   onChange,
-  seatedCount,
-  capacity,
-  tableCount,
+  sideProgress,
+  unassignedGuests,
+  overCapacityTables,
 }: {
   active: Step;
   onChange: (s: Step) => void;
-  seatedCount: number;
-  capacity: number;
-  tableCount: number;
+  sideProgress: Record<Side, { seated: number; total: number }>;
+  unassignedGuests: number;
+  overCapacityTables: number;
 }) {
   const detail: Record<Step, string> = {
-    LAYOUT: `${tableCount} ${tableCount === 1 ? 'mesa' : 'mesas'}`,
-    ASSIGN: `${seatedCount}/${capacity} sentados`,
-    REVIEW: `${seatedCount}/${capacity} listos`,
+    MAMA: `${sideProgress.MAMA.seated}/${sideProgress.MAMA.total} asignados`,
+    PAPA: `${sideProgress.PAPA.seated}/${sideProgress.PAPA.total} asignados`,
+    REVIEW: `${unassignedGuests} sin mesa${overCapacityTables ? ` · ${overCapacityTables} con sobrecupo` : ''}`,
   };
   return (
     <div className="seat-stepper" role="tablist" aria-label="Pasos del acomodo">
       {STEP_ORDER.map((step) => {
         const isActive = step === active;
-        const color = step === 'LAYOUT' ? '#33567D' : step === 'ASSIGN' ? '#B5546F' : '#0f172a';
+        const color = step === 'MAMA' ? SIDE_COLOR.MAMA : step === 'PAPA' ? SIDE_COLOR.PAPA : '#0f172a';
         return (
           <button
             key={step}
@@ -1149,6 +1167,29 @@ function Stepper({
         );
       })}
     </div>
+  );
+}
+
+function ReviewHealth({
+  unassignedGuests,
+  seatedGuests,
+  totalGuests,
+  totalSeats,
+  overCapacityTables,
+}: {
+  unassignedGuests: number;
+  seatedGuests: number;
+  totalGuests: number;
+  totalSeats: number;
+  overCapacityTables: number;
+}) {
+  return (
+    <section className="seat-review-health" aria-label="Balance del salón">
+      <div><span>Invitados asignados</span><strong>{seatedGuests} de {totalGuests}</strong></div>
+      <div><span>Asientos ocupados</span><strong>{seatedGuests} de {totalSeats}</strong></div>
+      <div className={unassignedGuests ? 'is-attention' : undefined}><span>Sin mesa</span><strong>{unassignedGuests}</strong></div>
+      <div className={overCapacityTables ? 'is-over' : undefined}><span>Con sobrecupo</span><strong>{overCapacityTables}</strong></div>
+    </section>
   );
 }
 
@@ -1207,8 +1248,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [step, setStep] = useState<Step>('LAYOUT');
-  const [assignmentSide, setAssignmentSide] = useState<Side>('MAMA');
+  const [step, setStep] = useState<Step>('MAMA');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -1294,9 +1334,28 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
 
   const totalSeats = useMemo(() => tables.reduce((sum, table) => sum + table.seats, 0), [tables]);
 
-  const unassignedForAssignment = useMemo(
-    () => unassigned.filter((family) => family.side == null || family.side === assignmentSide),
-    [unassigned, assignmentSide]
+  const sideProgress = useMemo<Record<Side, { seated: number; total: number }>>(() => {
+    const progress: Record<Side, { seated: number; total: number }> = {
+      MAMA: { seated: 0, total: 0 },
+      PAPA: { seated: 0, total: 0 },
+    };
+    for (const family of families) {
+      if (!family.side) continue;
+      const count = headcount(family);
+      progress[family.side].total += count;
+      if (family.tableId != null) progress[family.side].seated += count;
+    }
+    return progress;
+  }, [families]);
+
+  const unassignedGuests = useMemo(
+    () => unassigned.reduce((sum, family) => sum + headcount(family), 0),
+    [unassigned]
+  );
+
+  const overCapacityTables = useMemo(
+    () => tables.filter((table) => (familiesByTable.get(table.id) ?? []).reduce((sum, family) => sum + headcount(family), 0) > table.seats).length,
+    [familiesByTable, tables]
   );
 
   // --- API helpers ---
@@ -1508,8 +1567,7 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
           <div className="seat-summary-info">
             <strong>{eventName || 'Resumen del salón'}</strong>
             <span className="seat-summary-sub">
-              {families.length} familias · {seatedGuests}/{totalGuests} personas sentadas ({pct}%) · {tables.length}{' '}
-              {tables.length === 1 ? 'mesa' : 'mesas'}
+              {families.length} familias · {seatedGuests} de {totalGuests} invitados asignados ({pct}%) · {totalSeats} asientos disponibles
             </span>
             <div
               className="seat-progress"
@@ -1517,9 +1575,9 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label="Personas sentadas"
+              aria-label="Invitados asignados"
             >
-              <div className="seat-progress-fill" style={{ width: `${pct}%` }} />
+              <div className="seat-progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
             </div>
           </div>
           <div className="seat-summary-actions">
@@ -1582,36 +1640,17 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
           </div>
         )}
 
-        <Stepper active={step} onChange={setStep} seatedCount={seatedGuests} capacity={totalSeats} tableCount={tables.length} />
+        <Stepper active={step} onChange={setStep} sideProgress={sideProgress} unassignedGuests={unassignedGuests} overCapacityTables={overCapacityTables} />
 
         <div key={step} className="seat-step-content animate-in fade-in slide-in-from-right-2 duration-200">
-          {step === 'LAYOUT' && (
-            <AllTablesGrid
-              tables={tables}
-              familiesByTable={familiesByTable}
-              eventId={eventId}
-              onAddTable={addTable}
-              onDeleteTable={(tableId) => setConfirmation({ kind: 'table', tableId })}
-              onRenameTable={renameTable}
-              onSelectTable={setMobileTableSelect}
-              onSelectFamily={setMobileFamilySelect}
-              onRequestClearSeating={() => setConfirmation({ kind: 'clear' })}
-              resetRevision={layoutResetRevision}
-            />
-          )}
-
-          {step === 'ASSIGN' && (
+          {(step === 'MAMA' || step === 'PAPA') && (() => {
+            const activeSide: Side = step;
+            const unassignedForSide = unassigned.filter((family) => family.side == null || family.side === activeSide);
+            return (
             <>
-              <div className="seat-assignment-side-picker" role="group" aria-label="Familias y mesas por lado">
-                {(['MAMA', 'PAPA'] as Side[]).map((side) => (
-                  <button key={side} type="button" className={assignmentSide === side ? 'is-active' : undefined} style={assignmentSide === side ? { borderColor: SIDE_COLOR[side], color: SIDE_COLOR[side] } : undefined} onClick={() => setAssignmentSide(side)}>
-                    <span className="seat-side-dot" style={{ background: SIDE_COLOR[side] }} aria-hidden /> Lado {SIDE_LABEL[side]}
-                  </button>
-                ))}
-              </div>
-              <UnassignedTray families={unassignedForAssignment} onSelectFamily={setMobileFamilySelect} />
+              <UnassignedTray families={unassignedForSide} onSelectFamily={setMobileFamilySelect} />
               <SideSection
-                side={assignmentSide}
+                side={activeSide}
                 tables={tables}
                 familiesByTable={familiesByTable}
                 onAddTable={addTable}
@@ -1621,22 +1660,25 @@ export default function SeatingPlanner({ eventId, eventName }: SeatingPlannerPro
                 onSelectFamily={setMobileFamilySelect}
               />
             </>
-          )}
+            );
+          })()}
 
           {step === 'REVIEW' && (
-            <AllTablesGrid
-              tables={tables}
-              familiesByTable={familiesByTable}
-              eventId={eventId}
-              editable={false}
-              onAddTable={addTable}
-              onDeleteTable={(tableId) => setConfirmation({ kind: 'table', tableId })}
-              onRenameTable={renameTable}
-              onSelectTable={setMobileTableSelect}
-              onSelectFamily={setMobileFamilySelect}
-              onRequestClearSeating={() => setConfirmation({ kind: 'clear' })}
-              resetRevision={layoutResetRevision}
-            />
+            <>
+              <ReviewHealth unassignedGuests={unassignedGuests} seatedGuests={seatedGuests} totalGuests={totalGuests} totalSeats={totalSeats} overCapacityTables={overCapacityTables} />
+              <AllTablesGrid
+                tables={tables}
+                familiesByTable={familiesByTable}
+                eventId={eventId}
+                onAddTable={addTable}
+                onDeleteTable={(tableId) => setConfirmation({ kind: 'table', tableId })}
+                onRenameTable={renameTable}
+                onSelectTable={setMobileTableSelect}
+                onSelectFamily={setMobileFamilySelect}
+                onRequestClearSeating={() => setConfirmation({ kind: 'clear' })}
+                resetRevision={layoutResetRevision}
+              />
+            </>
           )}
         </div>
       </div>

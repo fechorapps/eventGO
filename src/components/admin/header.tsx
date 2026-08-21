@@ -36,7 +36,7 @@ export function AdminHeader({ authenticated = false }: { authenticated?: boolean
         scrolled && 'shadow-xs backdrop-blur-md bg-background/70',
       )}
     >
-      <Container className="flex flex-wrap items-center justify-between gap-2">
+      <Container className="flex flex-wrap items-center justify-between gap-3 max-sm:py-1">
         <div className="flex items-center gap-2.5">
           <Link href="/admin" className="flex items-center gap-2 no-underline" aria-label="EventGo, ir al panel de administración">
             <Image src="/brand/eventgo-mark.png" alt="" width={32} height={32} priority className="size-8 shrink-0" />
@@ -45,15 +45,15 @@ export function AdminHeader({ authenticated = false }: { authenticated?: boolean
           <span className="text-muted-foreground text-sm hidden sm:inline">Panel de administración</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex items-center gap-2 max-sm:w-full">
+          <Button variant="outline" size="sm" className="max-sm:h-11 max-sm:flex-1" asChild>
             <Link href={inviteHref} target="_blank">
               Ver invitación
               <ExternalLink />
             </Link>
           </Button>
           {authenticated && (
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" className="max-sm:h-11 max-sm:flex-1" onClick={handleLogout}>
               Salir
               <LogOut />
             </Button>
